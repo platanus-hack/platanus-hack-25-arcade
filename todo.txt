@@ -1,0 +1,5 @@
+agrega un carril en medio del jugador 1 y el jugador 2 para que no confundan sus notas
+para cada jugador agrega una barrita bajo donde deben presionar las notas
+haz que las notas se vean más anchas
+permite que hayan notas dobles (es decir, que un mismo jugador tenga que tocar dos notas a la vez)
+iguala la cantidad de notas que deben tocar ambos jugadores (es decir, si )

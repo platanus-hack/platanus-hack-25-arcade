@@ -1,0 +1,5 @@
+Para correr el juego:
+pnpm dev
+
+Para ver requisitos:
+pnpm check-restrictions
