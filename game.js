@@ -1,5 +1,5 @@
-// Platanus Hack 25: Snake Game
-// Navigate the snake around the "PLATANUS HACK ARCADE" title made of blocks!
+// Platanus Hack 25: Orbital Wave Dodge
+// Mueves un círculo y esquivas anillos que salen del centro con huecos.
 
 const config = {
   type: Phaser.AUTO,
@@ -14,345 +14,326 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-// Game variables
-let snake = [];
-let snakeSize = 15;
-let direction = { x: 1, y: 0 };
-let nextDirection = { x: 1, y: 0 };
-let food;
+// --- variables globales ---
+let g;                // graphics
+let player;           // {x,y,r}
+let cursors;
+let waves = [];       // anillos activos
+let spawnTimer = 0;   // tiempo para próxima ola
+let spawnDelay = 1400;// ms entre olas (se va bajando)
+let gameOver = false;
 let score = 0;
 let scoreText;
-let titleBlocks = [];
-let gameOver = false;
-let moveTimer = 0;
-let moveDelay = 150;
-let graphics;
-
-// Pixel font patterns (5x5 grid for each letter)
-const letters = {
-  P: [[1,1,1,1],[1,0,0,1],[1,1,1,1],[1,0,0,0],[1,0,0,0]],
-  L: [[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,1]],
-  A: [[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
-  T: [[1,1,1,1],[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
-  N: [[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1],[1,0,0,1]],
-  U: [[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,1]],
-  S: [[0,1,1,1],[1,0,0,0],[0,1,1,0],[0,0,0,1],[1,1,1,0]],
-  H: [[1,0,0,1],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
-  C: [[0,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0],[0,1,1,1]],
-  K: [[1,0,0,1],[1,0,1,0],[1,1,0,0],[1,0,1,0],[1,0,0,1]],
-  '2': [[1,1,1,0],[0,0,0,1],[0,1,1,0],[1,0,0,0],[1,1,1,1]],
-  '5': [[1,1,1,1],[1,0,0,0],[1,1,1,0],[0,0,0,1],[1,1,1,0]],
-  ':': [[0,0,0,0],[0,1,0,0],[0,0,0,0],[0,1,0,0],[0,0,0,0]],
-  R: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],
-  D: [[1,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,0]],
-  E: [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,1,1,1]]
-};
-
-// Bold font for ARCADE (filled/solid style)
-const boldLetters = {
-  A: [[1,1,1,1,1],[1,1,0,1,1],[1,1,1,1,1],[1,1,0,1,1],[1,1,0,1,1]],
-  R: [[1,1,1,1,0],[1,1,0,1,1],[1,1,1,1,0],[1,1,0,1,1],[1,1,0,1,1]],
-  C: [[1,1,1,1,1],[1,1,0,0,0],[1,1,0,0,0],[1,1,0,0,0],[1,1,1,1,1]],
-  D: [[1,1,1,1,0],[1,1,0,1,1],[1,1,0,1,1],[1,1,0,1,1],[1,1,1,1,0]],
-  E: [[1,1,1,1,1],[1,1,0,0,0],[1,1,1,1,0],[1,1,0,0,0],[1,1,1,1,1]]
-};
+let center = { x: 400, y: 300 };
+let bgPulse = 0;
+let best = 0;
 
 function create() {
-  const scene = this;
-  graphics = this.add.graphics();
+  g = this.add.graphics();
+  cursors = this.input.keyboard.createCursorKeys();
 
-  // Build "PLATANUS HACK ARCADE" in cyan - centered and grid-aligned
-  // PLATANUS: 8 letters × (4 cols + 1 spacing) = 40 blocks, but last letter no spacing = 39 blocks × 15px = 585px
-  let x = Math.floor((800 - 585) / 2 / snakeSize) * snakeSize;
-  let y = Math.floor(180 / snakeSize) * snakeSize;
-  'PLATANUS'.split('').forEach(char => {
-    x = drawLetter(char, x, y, 0x00ffff);
-  });
+  // jugador: círculo
+  player = {
+    x: 400,
+    y: 450,
+    r: 10,
+    speed: 200
+  };
 
-  // HACK: 4 letters × (4 cols + 1 spacing) = 20 blocks, but last letter no spacing = 19 blocks × 15px = 285px
-  x = Math.floor((800 - 285) / 2 / snakeSize) * snakeSize;
-  y = Math.floor(280 / snakeSize) * snakeSize;
-  'HACK'.split('').forEach(char => {
-    x = drawLetter(char, x, y, 0x00ffff);
-  });
-
-  // ARCADE: 6 letters × (5 cols + 1 spacing) = 36 blocks, but last letter no spacing = 35 blocks × 15px = 525px
-  x = Math.floor((800 - 525) / 2 / snakeSize) * snakeSize;
-  y = Math.floor(380 / snakeSize) * snakeSize;
-  'ARCADE'.split('').forEach(char => {
-    x = drawLetter(char, x, y, 0xff00ff, true);
-  });
-
-  // Score display
+  // texto puntaje
   scoreText = this.add.text(16, 16, 'Score: 0', {
     fontSize: '24px',
     fontFamily: 'Arial, sans-serif',
-    color: '#00ff00'
+    color: '#00ffcc'
   });
 
-  // Instructions
-  this.add.text(400, 560, 'Arrow Keys | Avoid Walls, Yourself & The Title!', {
+  // instrucciones
+  this.add.text(400, 580, 'Flechas para moverte · Pasa por los huecos · R para reiniciar', {
     fontSize: '16px',
     fontFamily: 'Arial, sans-serif',
-    color: '#888888',
+    color: '#888',
     align: 'center'
   }).setOrigin(0.5);
 
-  // Initialize snake (start top left)
-  snake = [
-    { x: 75, y: 60 },
-    { x: 60, y: 60 },
-    { x: 45, y: 60 }
-  ];
-
-  // Spawn initial food
-  spawnFood();
-
-  // Keyboard input
-  this.input.keyboard.on('keydown', (event) => {
-    if (gameOver && event.key === 'r') {
-      restartGame(scene);
-      return;
-    }
-
-    if (event.key === 'ArrowUp' && direction.y === 0) {
-      nextDirection = { x: 0, y: -1 };
-    } else if (event.key === 'ArrowDown' && direction.y === 0) {
-      nextDirection = { x: 0, y: 1 };
-    } else if (event.key === 'ArrowLeft' && direction.x === 0) {
-      nextDirection = { x: -1, y: 0 };
-    } else if (event.key === 'ArrowRight' && direction.x === 0) {
-      nextDirection = { x: 1, y: 0 };
+  // input restart
+  this.input.keyboard.on('keydown', (ev) => {
+    if (ev.key === 'r' && gameOver) {
+      restart(this);
     }
   });
 
-  playTone(this, 440, 0.1);
+  // sonido inicio
+  playTone(this, 660, 0.12);
+
+  // crear primera ola
+  spawnWave();
 }
 
-function drawLetter(char, startX, startY, color, useBold = false) {
-  const pattern = useBold ? boldLetters[char] : letters[char];
-  if (!pattern) return startX + 30;
-
-  for (let row = 0; row < pattern.length; row++) {
-    for (let col = 0; col < pattern[row].length; col++) {
-      if (pattern[row][col]) {
-        const blockX = startX + col * snakeSize;
-        const blockY = startY + row * snakeSize;
-        titleBlocks.push({ x: blockX, y: blockY, color: color });
-      }
-    }
+function spawnWave() {
+  // cada ola es un anillo que parte en r=0 y crece
+  // tendrá entre 1 y 3 huecos
+  const gapsCount = Phaser.Math.Between(1, 3);
+  const gaps = [];
+  const base = Phaser.Math.FloatBetween(0, Math.PI * 2);
+  for (let i = 0; i < gapsCount; i++) {
+    const size = Phaser.Math.FloatBetween(0.4, 0.75); // en radianes
+    const start = base + i * (Math.PI * 2 / gapsCount) + Phaser.Math.FloatBetween(-0.2, 0.2);
+    gaps.push({
+      start: wrapAngle(start),
+      end: wrapAngle(start + size)
+    });
   }
-  return startX + (pattern[0].length + 1) * snakeSize;
+
+  waves.push({
+    r: 0,
+    width: 15,              // grosor del anillo
+    speed: 120,             // px por segundo
+    gaps: gaps,
+    color: 0x00ffff
+  });
 }
 
-function update(_time, delta) {
+function update(time, delta) {
   if (gameOver) return;
 
-  moveTimer += delta;
-  if (moveTimer >= moveDelay) {
-    moveTimer = 0;
-    direction = nextDirection;
-    moveSnake(this);
+  const dt = delta / 1000;
+
+  // mover jugador
+  movePlayer(dt);
+
+  // actualizar olas
+  for (let i = waves.length - 1; i >= 0; i--) {
+    const wv = waves[i];
+    wv.r += wv.speed * dt;
+    // si ya salió de pantalla, la quitamos y damos score
+    if (wv.r - wv.width > 900) {
+      waves.splice(i, 1);
+      score += 5;
+      scoreText.setText('Score: ' + score);
+      // subir dificultad
+      if (spawnDelay > 500) spawnDelay -= 10;
+    }
   }
 
-  drawGame();
+  // spawnear nuevas olas
+  spawnTimer += delta;
+  if (spawnTimer >= spawnDelay) {
+    spawnTimer = 0;
+    spawnWave();
+  }
+
+  // dibujar
+  drawScene();
+
+  // colisiones
+  checkCollisions(this, dt);
+
+  bgPulse += dt * 2;
 }
 
-function moveSnake(scene) {
-  const head = snake[0];
-  const newHead = {
-    x: head.x + direction.x * snakeSize,
-    y: head.y + direction.y * snakeSize
-  };
+function movePlayer(dt) {
+  let vx = 0, vy = 0;
+  if (cursors.left.isDown) vx = -1;
+  else if (cursors.right.isDown) vx = 1;
+  if (cursors.up.isDown) vy = -1;
+  else if (cursors.down.isDown) vy = 1;
 
-  // Check wall collision
-  if (newHead.x < 0 || newHead.x >= 800 || newHead.y < 0 || newHead.y >= 600) {
-    endGame(scene);
-    return;
+  const mag = Math.hypot(vx, vy);
+  if (mag > 0) {
+    vx /= mag;
+    vy /= mag;
   }
 
-  // Check self collision
-  for (let segment of snake) {
-    if (segment.x === newHead.x && segment.y === newHead.y) {
-      endGame(scene);
-      return;
-    }
-  }
+  player.x += vx * player.speed * dt;
+  player.y += vy * player.speed * dt;
 
-  // Check title block collision
-  for (let block of titleBlocks) {
-    if (newHead.x === block.x && newHead.y === block.y) {
-      endGame(scene);
-      return;
-    }
-  }
-
-  snake.unshift(newHead);
-
-  // Check food collision
-  if (newHead.x === food.x && newHead.y === food.y) {
-    score += 10;
-    scoreText.setText('Score: ' + score);
-    spawnFood();
-    playTone(scene, 880, 0.1);
-
-    if (moveDelay > 80) {
-      moveDelay -= 2;
-    }
-  } else {
-    snake.pop();
-  }
+  // límites pantalla
+  if (player.x < player.r) player.x = player.r;
+  if (player.x > 800 - player.r) player.x = 800 - player.r;
+  if (player.y < player.r) player.y = player.r;
+  if (player.y > 600 - player.r) player.y = 600 - player.r;
 }
 
-function spawnFood() {
-  let valid = false;
-  let attempts = 0;
+function drawScene() {
+  g.clear();
 
-  while (!valid && attempts < 100) {
-    attempts++;
-    const gridX = Math.floor(Math.random() * 53) * snakeSize;
-    const gridY = Math.floor(Math.random() * 40) * snakeSize;
+  // fondo dinamico
+  const glow = (Math.sin(bgPulse) * 0.5 + 0.5) * 0.3 + 0.1;
+  g.fillStyle(Phaser.Display.Color.GetColor(glow * 255, 20, glow * 120), 1);
+  g.fillRect(0, 0, 800, 600);
 
-    // Check not on snake
-    let onSnake = false;
-    for (let segment of snake) {
-      if (segment.x === gridX && segment.y === gridY) {
-        onSnake = true;
-        break;
+  // centro
+  g.fillStyle(0x002222, 1);
+  g.fillCircle(center.x, center.y, 6);
+
+  // dibujar olas
+  waves.forEach(wv => {
+    // anillo completo base
+    const outer = wv.r + wv.width * 0.5;
+    const inner = wv.r - wv.width * 0.5;
+
+    // fondo tenue del anillo
+    g.lineStyle(wv.width, wv.color, 0.15);
+    g.strokeCircle(center.x, center.y, wv.r);
+
+    // dibujar sólo las partes sólidas (o sea, todo menos los huecos)
+    g.lineStyle(wv.width, wv.color, 1);
+    const segs = 30; // cuántos segmentos para aproximar
+    const step = Math.PI * 2 / segs;
+    for (let a = 0; a < Math.PI * 2; a += step) {
+      const mid = a + step * 0.5;
+      if (!angleInGaps(mid, wv.gaps)) {
+        const x1 = center.x + Math.cos(a) * wv.r;
+        const y1 = center.y + Math.sin(a) * wv.r;
+        const x2 = center.x + Math.cos(a + step) * wv.r;
+        const y2 = center.y + Math.sin(a + step) * wv.r;
+        g.beginPath();
+        g.moveTo(x1, y1);
+        g.lineTo(x2, y2);
+        g.strokePath();
       }
     }
-
-    // Check not on title blocks
-    let onTitle = false;
-    for (let block of titleBlocks) {
-      if (gridX === block.x && gridY === block.y) {
-        onTitle = true;
-        break;
-      }
-    }
-
-    if (!onSnake && !onTitle) {
-      food = { x: gridX, y: gridY };
-      valid = true;
-    }
-  }
-}
-
-function drawGame() {
-  graphics.clear();
-
-  // Draw title blocks
-  titleBlocks.forEach(block => {
-    graphics.fillStyle(block.color, 1);
-    graphics.fillRect(block.x, block.y, snakeSize - 2, snakeSize - 2);
   });
 
-  // Draw snake
-  snake.forEach((segment, index) => {
-    if (index === 0) {
-      graphics.fillStyle(0x00ff00, 1);
+  // jugador
+  g.fillStyle(0xffff00, 1);
+  g.fillCircle(player.x, player.y, player.r + 1);
+  g.lineStyle(2, 0xffaa00, 1);
+  g.strokeCircle(player.x, player.y, player.r + 1);
+}
+
+function angleInGaps(ang, gaps) {
+  ang = wrapAngle(ang);
+  for (let i = 0; i < gaps.length; i++) {
+    const g1 = wrapAngle(gaps[i].start);
+    const g2 = wrapAngle(gaps[i].end);
+    if (g1 <= g2) {
+      if (ang >= g1 && ang <= g2) return true;
     } else {
-      graphics.fillStyle(0x00aa00, 1);
+      // hueco pasa por 2π -> 0
+      if (ang >= g1 || ang <= g2) return true;
     }
-    graphics.fillRect(segment.x, segment.y, snakeSize - 2, snakeSize - 2);
-  });
+  }
+  return false;
+}
 
-  // Draw food
-  graphics.fillStyle(0xff0000, 1);
-  graphics.fillRect(food.x, food.y, snakeSize - 2, snakeSize - 2);
+function wrapAngle(a) {
+  const tw = Math.PI * 2;
+  while (a < 0) a += tw;
+  while (a >= tw) a -= tw;
+  return a;
+}
+
+function checkCollisions(scene) {
+  // convertimos pos jugador a polar respecto al centro
+  const dx = player.x - center.x;
+  const dy = player.y - center.y;
+  const dist = Math.hypot(dx, dy);
+  const ang = Math.atan2(dy, dx);
+
+  for (let i = 0; i < waves.length; i++) {
+    const wv = waves[i];
+    // el anillo está en wv.r con grosor wv.width
+    const half = wv.width * 0.5;
+    if (dist >= wv.r - half - player.r && dist <= wv.r + half + player.r) {
+      // estamos en la zona del anillo, ahora ver si estamos en un hueco
+      if (!angleInGaps(ang, wv.gaps)) {
+        endGame(scene);
+        return;
+      }
+    }
+  }
 }
 
 function endGame(scene) {
+  if (gameOver) return;
   gameOver = true;
-  playTone(scene, 220, 0.5);
 
-  // Semi-transparent overlay
+  // guardar mejor puntaje
+  if (score > best) best = score;
+
+  playTone(scene, 180, 0.35);
+
   const overlay = scene.add.graphics();
-  overlay.fillStyle(0x000000, 0.7);
+  overlay.fillStyle(0x000000, 0.75);
   overlay.fillRect(0, 0, 800, 600);
 
-  // Game Over title with glow effect
-  const gameOverText = scene.add.text(400, 300, 'GAME OVER', {
-    fontSize: '64px',
+  const t = scene.add.text(400, 250, 'GAME OVER', {
+    fontSize: '62px',
     fontFamily: 'Arial, sans-serif',
-    color: '#ff0000',
-    align: 'center',
-    stroke: '#ff6666',
-    strokeThickness: 8
+    color: '#ff3333',
+    stroke: '#000',
+    strokeThickness: 6
   }).setOrigin(0.5);
 
-  // Pulsing animation for game over text
   scene.tweens.add({
-    targets: gameOverText,
-    scale: { from: 1, to: 1.1 },
-    alpha: { from: 1, to: 0.8 },
-    duration: 800,
+    targets: t,
+    scale: { from: 1, to: 1.05 },
     yoyo: true,
     repeat: -1,
+    duration: 700,
     ease: 'Sine.easeInOut'
   });
 
-  // Score display
-  scene.add.text(400, 400, 'SCORE: ' + score, {
-    fontSize: '36px',
+  scene.add.text(400, 340, 'SCORE: ' + score, {
+    fontSize: '34px',
     fontFamily: 'Arial, sans-serif',
     color: '#00ffff',
-    align: 'center',
-    stroke: '#000000',
+    stroke: '#000',
     strokeThickness: 4
   }).setOrigin(0.5);
 
-  // Restart instruction with subtle animation
-  const restartText = scene.add.text(400, 480, 'Press R to Restart', {
-    fontSize: '24px',
+  scene.add.text(400, 390, 'BEST: ' + best, {
+    fontSize: '26px',
+    fontFamily: 'Arial, sans-serif',
+    color: '#ffffff',
+    stroke: '#000',
+    strokeThickness: 3
+  }).setOrigin(0.5);
+
+  const rt = scene.add.text(400, 460, 'Presiona R para reiniciar', {
+    fontSize: '20px',
     fontFamily: 'Arial, sans-serif',
     color: '#ffff00',
-    align: 'center',
     stroke: '#000000',
     strokeThickness: 3
   }).setOrigin(0.5);
 
-  // Blinking animation for restart text
   scene.tweens.add({
-    targets: restartText,
+    targets: rt,
     alpha: { from: 1, to: 0.3 },
-    duration: 600,
+    duration: 550,
     yoyo: true,
-    repeat: -1,
-    ease: 'Sine.easeInOut'
+    repeat: -1
   });
 }
 
-function restartGame(scene) {
-  snake = [
-    { x: 75, y: 60 },
-    { x: 60, y: 60 },
-    { x: 45, y: 60 }
-  ];
-  direction = { x: 1, y: 0 };
-  nextDirection = { x: 1, y: 0 };
+function restart(scene) {
+  // reset lógicos
+  waves = [];
+  spawnTimer = 0;
+  spawnDelay = 1400;
   score = 0;
   gameOver = false;
-  moveDelay = 150;
+  player.x = 400;
+  player.y = 450;
   scoreText.setText('Score: 0');
-  spawnFood();
+
+  // limpiar objetos de la escena y rearmar UI básica
   scene.scene.restart();
 }
 
 function playTone(scene, frequency, duration) {
-  const audioContext = scene.sound.context;
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-
-  oscillator.frequency.value = frequency;
-  oscillator.type = 'square';
-
-  gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-
-  oscillator.start(audioContext.currentTime);
-  oscillator.stop(audioContext.currentTime + duration);
+  const ctx = scene.sound.context;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = frequency;
+  osc.type = 'square';
+  const now = ctx.currentTime;
+  gain.gain.setValueAtTime(0.12, now);
+  gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+  osc.start(now);
+  osc.stop(now + duration);
 }
