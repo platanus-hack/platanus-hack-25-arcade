@@ -1,6 +1,3 @@
-permite que hayan notas dobles (es decir, que un mismo jugador tenga que tocar dos notas a la vez)
-iguala la cantidad de notas que deben tocar ambos jugadores
-
 haz que el juego permita leer una lista de elementos (tiempo, frecuencia, cambio), donde el tiempo sea la cantidad de tiempo que pasó desde la nota anterior, la frecuencia sea la nota musical que se toca y el cambio indique si:
 - la nota es igual a la anterior
 - la nota cambia de carril
