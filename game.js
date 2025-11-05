@@ -1,5 +1,4 @@
-// Platanus Hack 25: Snake Game
-// Navigate the snake around the "PLATANUS HACK ARCADE" title made of blocks!
+// Platanus Hack 25: Bootfall
 
 // =============================================================================
 // ARCADE BUTTON MAPPING - COMPLETE TEMPLATE
@@ -13,53 +12,22 @@
 // To use in your game:
 //   if (key === 'P1U') { ... }  // Works on both arcade and local (via keyboard)
 //
-// CURRENT GAME USAGE (Snake):
-//   - P1U/P1D/P1L/P1R (Joystick) → Snake Direction
-//   - P1A (Button A) or START1 (Start Button) → Restart Game
+// CURRENT GAME USAGE (Bootfall):
+//   - P1L/P1R (Joystick) → Move left/right
+//   - P1U → Jump (grounded)
+//   - P1A → Shoot down (in air)
+//   - START1 → Start/Confirm/Restart
 // =============================================================================
 
 const ARCADE_CONTROLS = {
-  // ===== PLAYER 1 CONTROLS =====
-  // Joystick - Left hand on WASD
+  // ===== PLAYER 1 CONTROLS (Bootfall) =====
   'P1U': ['w'],
   'P1D': ['s'],
   'P1L': ['a'],
   'P1R': ['d'],
-  'P1DL': null,  // Diagonal down-left (no keyboard default)
-  'P1DR': null,  // Diagonal down-right (no keyboard default)
-
-  // Action Buttons - Right hand on home row area (ergonomic!)
-  // Top row (ABC): U, I, O  |  Bottom row (XYZ): J, K, L
   'P1A': ['u'],
   'P1B': ['i'],
-  'P1C': ['o'],
-  'P1X': ['j'],
-  'P1Y': ['k'],
-  'P1Z': ['l'],
-
-  // Start Button
-  'START1': ['1', 'Enter'],
-
-  // ===== PLAYER 2 CONTROLS =====
-  // Joystick - Right hand on Arrow Keys
-  'P2U': ['ArrowUp'],
-  'P2D': ['ArrowDown'],
-  'P2L': ['ArrowLeft'],
-  'P2R': ['ArrowRight'],
-  'P2DL': null,  // Diagonal down-left (no keyboard default)
-  'P2DR': null,  // Diagonal down-right (no keyboard default)
-
-  // Action Buttons - Left hand (avoiding P1's WASD keys)
-  // Top row (ABC): R, T, Y  |  Bottom row (XYZ): F, G, H
-  'P2A': ['r'],
-  'P2B': ['t'],
-  'P2C': ['y'],
-  'P2X': ['f'],
-  'P2Y': ['g'],
-  'P2Z': ['h'],
-
-  // Start Button
-  'START2': ['2']
+  'START1': ['1', 'Enter']
 };
 
 // Build reverse lookup: keyboard key → arcade button code
@@ -170,18 +138,9 @@ const config = {
 const game = new Phaser.Game(config);
 
 // Game variables
-let snake = [];
-let snakeSize = 15;
-let direction = { x: 1, y: 0 };
-let nextDirection = { x: 1, y: 0 };
-let food;
 let score = 0;
 let scoreText;
-let titleBlocks = [];
 let gameOver = false;
-let moveTimer = 0;
-let moveDelay = 100;  // Faster initial speed (was 150ms)
-let graphics;
 
 // Downwell-like variables (M0 prototype)
 let player;
@@ -189,6 +148,12 @@ let platforms = [];
 let bullets = [];
 let platformsGroup;
 let bulletsGroup;
+let hazardsGroup;
+let leftHazard;
+let rightHazard;
+let hazardOn = true;
+let hazardTimer = 0;
+let hazardInterval = 1200;
 let keysState = { left: false, right: false };
 let wasOnGround = false;
 let ammo = 3;
@@ -199,110 +164,24 @@ let speed = 220;
 let jump = 300;
 let recoil = 240;
 
-// Pixel font patterns (5x5 grid for each letter)
-const letters = {
-  P: [[1,1,1,1],[1,0,0,1],[1,1,1,1],[1,0,0,0],[1,0,0,0]],
-  L: [[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,1]],
-  A: [[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
-  T: [[1,1,1,1],[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]],
-  N: [[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1],[1,0,0,1]],
-  U: [[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,1]],
-  S: [[0,1,1,1],[1,0,0,0],[0,1,1,0],[0,0,0,1],[1,1,1,0]],
-  H: [[1,0,0,1],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
-  C: [[0,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0],[0,1,1,1]],
-  K: [[1,0,0,1],[1,0,1,0],[1,1,0,0],[1,0,1,0],[1,0,0,1]],
-  '2': [[1,1,1,0],[0,0,0,1],[0,1,1,0],[1,0,0,0],[1,1,1,1]],
-  '5': [[1,1,1,1],[1,0,0,0],[1,1,1,0],[0,0,0,1],[1,1,1,0]],
-  ':': [[0,0,0,0],[0,1,0,0],[0,0,0,0],[0,1,0,0],[0,0,0,0]],
-  R: [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],
-  D: [[1,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,0]],
-  E: [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,1,1,1]]
-};
-
-// Bold font for ARCADE (filled/solid style)
-const boldLetters = {
-  A: [[1,1,1,1,1],[1,1,0,1,1],[1,1,1,1,1],[1,1,0,1,1],[1,1,0,1,1]],
-  R: [[1,1,1,1,0],[1,1,0,1,1],[1,1,1,1,0],[1,1,0,1,1],[1,1,0,1,1]],
-  C: [[1,1,1,1,1],[1,1,0,0,0],[1,1,0,0,0],[1,1,0,0,0],[1,1,1,1,1]],
-  D: [[1,1,1,1,0],[1,1,0,1,1],[1,1,0,1,1],[1,1,0,1,1],[1,1,1,1,0]],
-  E: [[1,1,1,1,1],[1,1,0,0,0],[1,1,1,1,0],[1,1,0,0,0],[1,1,1,1,1]]
-};
 
 function create() {
   const scene = this;
-  graphics = this.add.graphics();
-
-  // Build "PLATANUS HACK ARCADE" in cyan - centered and grid-aligned
-  // PLATANUS: 8 letters × (4 cols + 1 spacing) = 40 blocks, but last letter no spacing = 39 blocks × 15px = 585px
-  let x = Math.floor((800 - 585) / 2 / snakeSize) * snakeSize;
-  let y = Math.floor(180 / snakeSize) * snakeSize;
-  'PLATANUS'.split('').forEach(char => {
-    x = drawLetter(char, x, y, 0x00ffff);
-  });
-
-  // HACK: 4 letters × (4 cols + 1 spacing) = 20 blocks, but last letter no spacing = 19 blocks × 15px = 285px
-  x = Math.floor((800 - 285) / 2 / snakeSize) * snakeSize;
-  y = Math.floor(280 / snakeSize) * snakeSize;
-  'HACK'.split('').forEach(char => {
-    x = drawLetter(char, x, y, 0x00ffff);
-  });
-
-  // ARCADE: 6 letters × (5 cols + 1 spacing) = 36 blocks, but last letter no spacing = 35 blocks × 15px = 525px
-  x = Math.floor((800 - 525) / 2 / snakeSize) * snakeSize;
-  y = Math.floor(380 / snakeSize) * snakeSize;
-  'ARCADE'.split('').forEach(char => {
-    x = drawLetter(char, x, y, 0xff00ff, true);
-  });
-
-  // Score display
-  scoreText = this.add.text(16, 16, 'Score: 0', {
-    fontSize: '24px',
-    fontFamily: 'Arial, sans-serif',
-    color: '#00ff00'
-  });
-
-  // Instructions
-  this.add.text(400, 560, 'Use Joystick to Move | Avoid Walls, Yourself & The Title!', {
-    fontSize: '16px',
-    fontFamily: 'Arial, sans-serif',
-    color: '#888888',
-    align: 'center'
-  }).setOrigin(0.5);
-
-  // Initialize snake (start top left)
-  snake = [
-    { x: 75, y: 60 },
-    { x: 60, y: 60 },
-    { x: 45, y: 60 }
-  ];
-
-  // Spawn initial food
-  spawnFood();
-
-  // Keyboard and Arcade Button input
-  this.input.keyboard.on('keydown', (event) => {
-    // Normalize keyboard input to arcade codes for easier testing
-    const key = KEYBOARD_TO_ARCADE[event.key] || event.key;
-
-    // Restart game (arcade buttons only)
-    if (gameOver && (key === 'P1A' || key === 'START1')) {
-      restartGame(scene);
-      return;
-    }
-
-    // Direction controls (keyboard keys get mapped to arcade codes)
-    if (key === 'P1U' && direction.y === 0) {
-      nextDirection = { x: 0, y: -1 };
-    } else if (key === 'P1D' && direction.y === 0) {
-      nextDirection = { x: 0, y: 1 };
-    } else if (key === 'P1L' && direction.x === 0) {
-      nextDirection = { x: -1, y: 0 };
-    } else if (key === 'P1R' && direction.x === 0) {
-      nextDirection = { x: 1, y: 0 };
-    }
-  });
-
+  // Bootfall scene init tone
   playTone(this, 440, 0.1);
+  // Reset core state on scene start
+  if (this.physics && this.physics.world && this.physics.world.isPaused) this.physics.world.resume();
+  gameOver = false;
+  score = 0;
+  maxDepth = 0;
+  ammo = maxAmmo;
+  wasOnGround = false;
+  keysState.left = keysState.right = false;
+  hazardOn = true;
+  hazardTimer = 0;
+  // Clear runtime arrays
+  platforms = [];
+  bullets = [];
 
   // ===== Downwell-like setup =====
   // Physics world bounds (very tall world)
@@ -313,6 +192,7 @@ function create() {
   // Physics groups
   platformsGroup = this.physics.add.staticGroup();
   bulletsGroup = this.physics.add.group();
+  hazardsGroup = this.physics.add.staticGroup();
 
   // Player: white rectangle with dynamic body
   player = this.add.rectangle(400, 50, 18, 24, 0xffffff);
@@ -329,26 +209,27 @@ function create() {
     if (b && b.destroy) b.destroy();
   });
 
+  // Side hazards (prevent safe wall-riding)
+  setupHazards(this);
+  this.physics.add.overlap(player, hazardsGroup, (_pl, _hz) => {
+    if (hazardOn) endGame(this);
+  });
+
   // Camera follow (soft)
   this.cameras.main.startFollow(player, false, 0.1, 0.1);
   this.cameras.main.setBackgroundColor('#000000');
 
   // HUD
-  if (!scoreText) {
-    scoreText = this.add.text(16, 16, 'Score: 0', {
-      fontSize: '24px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#00ff00'
-    });
-  }
-  scoreText.setScrollFactor(0);
-  if (!this.ammoText) {
-    this.ammoText = this.add.text(16, 44, 'Ammo: ' + ammo, {
-      fontSize: '20px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffff00'
-    }).setScrollFactor(0);
-  }
+  scoreText = this.add.text(16, 16, 'Score: 0', {
+    fontSize: '24px',
+    fontFamily: 'Arial, sans-serif',
+    color: '#00ff00'
+  }).setScrollFactor(0);
+  this.ammoText = this.add.text(16, 44, 'Ammo: ' + ammo, {
+    fontSize: '20px',
+    fontFamily: 'Arial, sans-serif',
+    color: '#ffff00'
+  }).setScrollFactor(0);
 
   // Input handlers (use arcade mapping)
   this.input.keyboard.on('keydown', (event) => {
@@ -375,21 +256,6 @@ function create() {
   });
 }
 
-function drawLetter(char, startX, startY, color, useBold = false) {
-  const pattern = useBold ? boldLetters[char] : letters[char];
-  if (!pattern) return startX + 30;
-
-  for (let row = 0; row < pattern.length; row++) {
-    for (let col = 0; col < pattern[row].length; col++) {
-      if (pattern[row][col]) {
-        const blockX = startX + col * snakeSize;
-        const blockY = startY + row * snakeSize;
-        titleBlocks.push({ x: blockX, y: blockY, color: color });
-      }
-    }
-  }
-  return startX + (pattern[0].length + 1) * snakeSize;
-}
 
 function update(_time, _delta) {
   if (gameOver) return;
@@ -448,123 +314,39 @@ function update(_time, _delta) {
     endGame(this);
     return;
   }
-}
 
-function moveSnake(scene) {
-  const head = snake[0];
-  const newHead = {
-    x: head.x + direction.x * snakeSize,
-    y: head.y + direction.y * snakeSize
-  };
-
-  // Check wall collision
-  if (newHead.x < 0 || newHead.x >= 800 || newHead.y < 0 || newHead.y >= 600) {
-    endGame(scene);
-    return;
-  }
-
-  // Check self collision
-  for (let segment of snake) {
-    if (segment.x === newHead.x && segment.y === newHead.y) {
-      endGame(scene);
-      return;
-    }
-  }
-
-  // Check title block collision
-  for (let block of titleBlocks) {
-    if (newHead.x === block.x && newHead.y === block.y) {
-      endGame(scene);
-      return;
-    }
-  }
-
-  snake.unshift(newHead);
-
-  // Check food collision
-  if (newHead.x === food.x && newHead.y === food.y) {
-    score += 10;
-    scoreText.setText('Score: ' + score);
-    spawnFood();
-    playTone(scene, 880, 0.1);
-
-    if (moveDelay > 50) {  // Faster max speed (was 80ms)
-      moveDelay -= 2;
-    }
-  } else {
-    snake.pop();
+  // Hazards follow camera and toggle damage
+  updateHazards(this);
+  hazardTimer += _delta || 0;
+  if (hazardTimer >= hazardInterval) {
+    hazardTimer = 0;
+    hazardOn = !hazardOn;
+    hazardInterval = Phaser.Math.Between(900, 1800);
+    setHazardVisual(this);
   }
 }
 
-function spawnFood() {
-  let valid = false;
-  let attempts = 0;
-
-  while (!valid && attempts < 100) {
-    attempts++;
-    const gridX = Math.floor(Math.random() * 53) * snakeSize;
-    const gridY = Math.floor(Math.random() * 40) * snakeSize;
-
-    // Check not on snake
-    let onSnake = false;
-    for (let segment of snake) {
-      if (segment.x === gridX && segment.y === gridY) {
-        onSnake = true;
-        break;
-      }
-    }
-
-    // Check not on title blocks
-    let onTitle = false;
-    for (let block of titleBlocks) {
-      if (gridX === block.x && gridY === block.y) {
-        onTitle = true;
-        break;
-      }
-    }
-
-    if (!onSnake && !onTitle) {
-      food = { x: gridX, y: gridY };
-      valid = true;
-    }
-  }
-}
-
-function drawGame() {
-  graphics.clear();
-
-  // Draw title blocks
-  titleBlocks.forEach(block => {
-    graphics.fillStyle(block.color, 1);
-    graphics.fillRect(block.x, block.y, snakeSize - 2, snakeSize - 2);
-  });
-
-  // Draw snake
-  snake.forEach((segment, index) => {
-    if (index === 0) {
-      graphics.fillStyle(0x00ff00, 1);
-    } else {
-      graphics.fillStyle(0x00aa00, 1);
-    }
-    graphics.fillRect(segment.x, segment.y, snakeSize - 2, snakeSize - 2);
-  });
-
-  // Draw food
-  graphics.fillStyle(0xff0000, 1);
-  graphics.fillRect(food.x, food.y, snakeSize - 2, snakeSize - 2);
-}
 
 function endGame(scene) {
   gameOver = true;
   playTone(scene, 220, 0.5);
+  // Completely stop gameplay
+  if (scene.physics && scene.physics.world) scene.physics.world.pause();
+  if (scene.cameras && scene.cameras.main) scene.cameras.main.stopFollow();
 
   // Semi-transparent overlay
   const overlay = scene.add.graphics();
   overlay.fillStyle(0x000000, 0.7);
   overlay.fillRect(0, 0, 800, 600);
+  overlay.setDepth(9999);
+  overlay.setScrollFactor(0);
+
+  const cam = scene.cameras.main;
+  const cx = player ? (player.x - cam.scrollX) : 400;
+  const cy = player ? (player.y - cam.scrollY) : 300;
 
   // Game Over title with glow effect
-  const gameOverText = scene.add.text(400, 300, 'GAME OVER', {
+  const gameOverText = scene.add.text(cx, cy, 'GAME OVER', {
     fontSize: '64px',
     fontFamily: 'Arial, sans-serif',
     color: '#ff0000',
@@ -572,6 +354,8 @@ function endGame(scene) {
     stroke: '#ff6666',
     strokeThickness: 8
   }).setOrigin(0.5);
+  gameOverText.setDepth(10000);
+  gameOverText.setScrollFactor(0);
 
   // Pulsing animation for game over text
   scene.tweens.add({
@@ -585,7 +369,7 @@ function endGame(scene) {
   });
 
   // Score display
-  scene.add.text(400, 400, 'SCORE: ' + score, {
+  const finalScoreText = scene.add.text(cx, cy + 100, 'TOTAL SCORE: ' + Math.floor(maxDepth), {
     fontSize: '36px',
     fontFamily: 'Arial, sans-serif',
     color: '#00ffff',
@@ -593,9 +377,11 @@ function endGame(scene) {
     stroke: '#000000',
     strokeThickness: 4
   }).setOrigin(0.5);
+  finalScoreText.setDepth(10000);
+  finalScoreText.setScrollFactor(0);
 
   // Restart instruction with subtle animation
-  const restartText = scene.add.text(400, 480, 'Press Button A or START to Restart', {
+  const restartText = scene.add.text(cx, cy + 180, 'Press Button A or START to Restart', {
     fontSize: '24px',
     fontFamily: 'Arial, sans-serif',
     color: '#ffff00',
@@ -603,6 +389,8 @@ function endGame(scene) {
     stroke: '#000000',
     strokeThickness: 3
   }).setOrigin(0.5);
+  restartText.setDepth(10000);
+  restartText.setScrollFactor(0);
 
   // Blinking animation for restart text
   scene.tweens.add({
@@ -613,6 +401,21 @@ function endGame(scene) {
     repeat: -1,
     ease: 'Sine.easeInOut'
   });
+
+  // Main Menu button
+  const menuBtn = scene.add.text(cx, cy + 240, 'Main Menu', {
+    fontSize: '28px',
+    fontFamily: 'Arial, sans-serif',
+    color: '#ffffff',
+    align: 'center',
+    stroke: '#000000',
+    strokeThickness: 3
+  }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  menuBtn.on('pointerdown', () => {
+    scene.scene.start('menu');
+  });
+  menuBtn.setDepth(10000);
+  menuBtn.setScrollFactor(0);
 }
 
 function restartGame(scene) {
@@ -681,6 +484,39 @@ function fireBullet(scene) {
   // Recoil upwards
   player.body.setVelocityY(Math.min(player.body.velocity.y - recoil, -recoil));
   playTone(scene, 880, 0.05);
+}
+
+// ===== Side hazard helpers =====
+function setupHazards(scene) {
+  const cam = scene.cameras.main;
+  // Left wall
+  leftHazard = scene.add.rectangle(6, cam.scrollY + 300, 12, 640, 0xff2222, hazardOn ? 0.6 : 0.12);
+  scene.physics.add.existing(leftHazard, true);
+  hazardsGroup.add(leftHazard);
+  if (leftHazard.body && leftHazard.body.updateFromGameObject) leftHazard.body.updateFromGameObject();
+  // Right wall
+  rightHazard = scene.add.rectangle(794, cam.scrollY + 300, 12, 640, 0xff2222, hazardOn ? 0.6 : 0.12);
+  scene.physics.add.existing(rightHazard, true);
+  hazardsGroup.add(rightHazard);
+  if (rightHazard.body && rightHazard.body.updateFromGameObject) rightHazard.body.updateFromGameObject();
+}
+
+function updateHazards(scene) {
+  const cam = scene.cameras.main;
+  if (leftHazard) {
+    leftHazard.y = cam.scrollY + 300;
+    if (leftHazard.body && leftHazard.body.updateFromGameObject) leftHazard.body.updateFromGameObject();
+  }
+  if (rightHazard) {
+    rightHazard.y = cam.scrollY + 300;
+    if (rightHazard.body && rightHazard.body.updateFromGameObject) rightHazard.body.updateFromGameObject();
+  }
+}
+
+function setHazardVisual(_scene) {
+  const a = hazardOn ? 0.6 : 0.12;
+  if (leftHazard) leftHazard.setFillStyle(0xff2222, a);
+  if (rightHazard) rightHazard.setFillStyle(0xff2222, a);
 }
 
 function playTone(scene, frequency, duration) {
