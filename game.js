@@ -25,7 +25,7 @@ const ARCADE_CONTROLS = {
   'P1D': ['s'],
   'P1L': ['a'],
   'P1R': ['d'],
-  'P1A': ['u'],
+  'P1A': ['e'],
   'P1B': ['i'],
   'START1': ['1', 'Enter']
 };
@@ -44,6 +44,8 @@ for (const [arcadeCode, keyboardKeys] of Object.entries(ARCADE_CONTROLS)) {
 // Scenes registry
 const GameScene = { key: 'game', create: create, update: update };
 const MenuScene = { key: 'menu', create: menuCreate, update: menuUpdate };
+
+let currentShootKey = 'e';
 
 function menuCreate() {
   const s = this;
@@ -66,7 +68,7 @@ function menuCreate() {
   };
   s.btnStart = mkBtn(260, 'Start Game', () => s.scene.start('game'));
   s.btnInstr = mkBtn(330, 'Instructions', () => showInstructions(s));
-  s.btnExit  = mkBtn(400, 'Exit', () => showExit(s));
+  s.btnExit  = mkBtn(400, 'Controls', () => showControls(s));
   s.menuIndex = 0; updateMenuVisuals(s);
 
   s.input.keyboard.on('keydown', (ev) => {
@@ -74,7 +76,7 @@ function menuCreate() {
     if (key === 'P1U') { s.menuIndex = (s.menuIndex + s.menuItems.length - 1) % s.menuItems.length; updateMenuVisuals(s); }
     else if (key === 'P1D') { s.menuIndex = (s.menuIndex + 1) % s.menuItems.length; updateMenuVisuals(s); }
     else if (key === 'P1A' || key === 'START1') {
-      const actions = [() => s.scene.start('game'), () => showInstructions(s), () => showExit(s)];
+      const actions = [() => s.scene.start('game'), () => showInstructions(s), () => showControls(s)];
       actions[s.menuIndex]();
     }
   });
@@ -83,29 +85,39 @@ function menuCreate() {
   s.instructionsGroup = s.add.group();
   const iOv = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.86);
   const iT = s.add.text(400, 180, 'Instructions', { fontSize: '40px', fontFamily: 'Arial, sans-serif', color: '#ffff00' }).setOrigin(0.5);
-  const iTxt = s.add.text(400, 300,
-    'Move: A/D  |  Jump: W\nShoot down: U (ammo 3, recarga al aterrizar)\nPress START to begin',
+  s.instructionsText = s.add.text(400, 300,
+    'Move: A/D  |  Jump: W\nShoot down: ' + currentShootKey.toUpperCase() + ' (ammo 3, recarga al aterrizar)\nPress START to begin',
     { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#dddddd', align: 'center' }
   ).setOrigin(0.5);
   const iBack = s.add.text(400, 420, 'Back', { fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#00ff00' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
   iBack.on('pointerdown', () => hideInstructions(s));
-  s.instructionsGroup.addMultiple([iOv, iT, iTxt, iBack]);
+  s.instructionsGroup.addMultiple([iOv, iT, s.instructionsText, iBack]);
   hideInstructions(s);
   s.input.keyboard.on('keydown', (ev) => { const k = KEYBOARD_TO_ARCADE[ev.key] || ev.key; if (s.instructionsVisible && (k === 'P1B' || ev.key === 'Escape' || k === 'P1A')) hideInstructions(s); });
 
-  // Exit overlay (hidden by default)
-  s.exitGroup = s.add.group();
-  const eOv = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.86);
-  const eTxt = s.add.text(400, 280, 'Exit is not available on web', { fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#ff6666' }).setOrigin(0.5);
-  const eHint = s.add.text(400, 330, 'Press START to play or Back to return', { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#dddddd' }).setOrigin(0.5);
-  const eBack = s.add.text(400, 400, 'Back', { fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#00ff00' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-  eBack.on('pointerdown', () => hideExit(s));
-  s.exitGroup.addMultiple([eOv, eTxt, eHint, eBack]);
-  hideExit(s);
+  // Controls overlay (hidden by default)
+  s.controlsGroup = s.add.group();
+  const cOv = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.86);
+  const cT = s.add.text(400, 180, 'Controls', { fontSize: '40px', fontFamily: 'Arial, sans-serif', color: '#ffff00' }).setOrigin(0.5);
+  s.controlsInfo = s.add.text(400, 300,
+    'Press any key to set Shoot\nCurrent: ' + currentShootKey.toUpperCase(),
+    { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#dddddd', align: 'center' }
+  ).setOrigin(0.5);
+  const cBack = s.add.text(400, 420, 'Back', { fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#00ff00' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  cBack.on('pointerdown', () => hideControls(s));
+  s.controlsGroup.addMultiple([cOv, cT, s.controlsInfo, cBack]);
+  hideControls(s);
   s.input.keyboard.on('keydown', (ev) => {
-    const k = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
-    if (s.exitVisible && (k === 'P1B' || ev.key === 'Escape' || k === 'P1A')) hideExit(s);
-    if (s.exitVisible && k === 'START1') s.scene.start('game');
+    if (!s.controlsVisible) return;
+    const raw = ev.key;
+    const k = KEYBOARD_TO_ARCADE[raw] || raw;
+    if (raw === 'Escape' || k === 'P1B') { hideControls(s); return; }
+    if (raw && raw.length === 1) {
+      rebindShootKey(raw.toLowerCase());
+      if (s.controlsInfo) s.controlsInfo.setText('Press any key to set Shoot\nCurrent: ' + currentShootKey.toUpperCase());
+      if (s.instructionsText) s.instructionsText.setText('Move: A/D  |  Jump: W\nShoot down: ' + currentShootKey.toUpperCase() + ' (ammo 3, recarga al aterrizar)\nPress START to begin');
+      hideControls(s);
+    }
   });
 }
 
@@ -123,8 +135,22 @@ function updateMenuVisuals(s) {
 
 function showInstructions(s) { s.instructionsVisible = true; s.instructionsGroup.setVisible(true); }
 function hideInstructions(s) { s.instructionsVisible = false; s.instructionsGroup.setVisible(false); }
-function showExit(s) { s.exitVisible = true; s.exitGroup.setVisible(true); }
-function hideExit(s) { s.exitVisible = false; s.exitGroup.setVisible(false); }
+function showControls(s) { s.controlsVisible = true; s.controlsGroup.setVisible(true); }
+function hideControls(s) { s.controlsVisible = false; s.controlsGroup.setVisible(false); }
+
+function rebindShootKey(newKey) {
+  const k = (newKey || '').toLowerCase();
+  // Only single letter a-z and not reserved
+  if (!/^[a-z]$/.test(k)) return;
+  if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'i') return;
+  // Remove previous mapping for P1A
+  if (currentShootKey && KEYBOARD_TO_ARCADE[currentShootKey] === 'P1A') {
+    delete KEYBOARD_TO_ARCADE[currentShootKey];
+  }
+  currentShootKey = k;
+  ARCADE_CONTROLS['P1A'] = [k];
+  KEYBOARD_TO_ARCADE[k] = 'P1A';
+}
 
 const config = {
   type: Phaser.AUTO,
