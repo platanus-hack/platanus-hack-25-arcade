@@ -471,6 +471,7 @@ function create() {
   const startX = 40 + startWidth / 2;
   const startY = 140;
   const startPlat = this.add.rectangle(startX, startY, startWidth, 12, 0xffff00);
+  startPlat.setStrokeStyle(2, 0xffaa00, 0.9); // Orange stroke for emphasis
   this.physics.add.existing(startPlat, true);
   if (startPlat.body) {
     startPlat.body.checkCollision.up = true;
@@ -484,8 +485,9 @@ function create() {
   if (platformsGroup) platformsGroup.add(startPlat);
   platforms.push(startPlat);
 
-  // Player: white rectangle with dynamic body (start on safe platform)
+  // Player: white rectangle with dynamic body and glow effect
   player = this.add.rectangle(startX, startY - 6 - 12, 18, 24, 0xffffff);
+  player.setStrokeStyle(2, 0x00ffff, 0.6); // Cyan glow
   this.physics.add.existing(player);
   if (player.body && player.body.setSize) player.body.setSize(player.displayWidth, player.displayHeight, true);
   player.body.setCollideWorldBounds(true);
@@ -534,22 +536,36 @@ function create() {
   this.cameras.main.startFollow(player, false, 0.1, 0.1);
   this.cameras.main.setBackgroundColor('#000000');
 
-  // HUD
+  // HUD with stylized backgrounds
+  const hudBg = this.add.rectangle(10, 10, 200, 90, 0x000000, 0.5);
+  hudBg.setOrigin(0, 0);
+  hudBg.setStrokeStyle(2, 0x00ffff, 0.4);
+  hudBg.setScrollFactor(0);
+  hudBg.setDepth(999);
+  
   scoreText = this.add.text(16, 16, 'Score: 0', {
     fontSize: '24px',
     fontFamily: 'Arial, sans-serif',
-    color: '#00ff00'
-  }).setScrollFactor(0);
+    color: '#00ff00',
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setScrollFactor(0).setDepth(1000);
+  
   this.ammoText = this.add.text(16, 44, 'Ammo: ' + ammo, {
     fontSize: '20px',
     fontFamily: 'Arial, sans-serif',
-    color: '#ffff00'
-  }).setScrollFactor(0);
+    color: '#ffff00',
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setScrollFactor(0).setDepth(1000);
+  
   comboText = this.add.text(16, 68, '', {
     fontSize: '20px',
     fontFamily: 'Arial, sans-serif',
-    color: '#00ffff'
-  }).setScrollFactor(0);
+    color: '#00ffff',
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setScrollFactor(0).setDepth(1000);
 
   // Title splash
   const titleSplash = this.add.text(400, 200, 'CHAINFALL', {
@@ -637,6 +653,33 @@ function update(_time, _delta) {
         this.ammoText.setColor('#ffff00');
       }
       playTone(this, 440, 0.05);
+      
+      // Landing visual effects
+      // Player flash effect (change color temporarily)
+      player.setFillStyle(0x00ffff); // Cyan flash
+      this.tweens.add({
+        targets: player,
+        duration: 200,
+        onComplete: () => player.setFillStyle(0xffffff) // Back to white
+      });
+      
+      // Small particle burst on landing
+      for (let i = 0; i < 4; i++) {
+        const px = player.x + (Math.random() - 0.5) * 20;
+        const particle = this.add.rectangle(px, player.y + 12, 3, 3, 0x00aaff);
+        this.physics.add.existing(particle);
+        particle.body.setVelocity(
+          (Math.random() - 0.5) * 100,
+          -Math.random() * 80
+        );
+        particle.body.setGravity(0, 400);
+        this.tweens.add({
+          targets: particle,
+          alpha: 0,
+          duration: 400,
+          onComplete: () => particle.destroy()
+        });
+      }
     }
     wasOnGround = onGround;
   }
@@ -858,6 +901,7 @@ function createPlatform(scene, y) {
   const width = Phaser.Math.Between(70, 180);
   const x = Phaser.Math.Between(40, 760 - width);
   const rect = scene.add.rectangle(x + width / 2, y, width, 12, 0x00aaff);
+  rect.setStrokeStyle(1, 0x0088dd, 0.8); // Darker blue outline
   scene.physics.add.existing(rect, true); // static body
   if (rect.body) {
     // One-way: collide only on top face
@@ -881,6 +925,7 @@ function positionPlatform(scene, rect, y) {
   rect.x = x + width / 2;
   rect.y = y;
   rect.setFillStyle(0x00aaff);
+  rect.setStrokeStyle(1, 0x0088dd, 0.8); // Re-apply stroke on reposition
   rect.noEnemies = false;
   if (rect.body) {
     // ensure collisions remain solid on both top and bottom faces
@@ -902,6 +947,7 @@ function positionPlatform(scene, rect, y) {
 
 function fireBullet(scene) {
   const b = scene.add.rectangle(player.x, player.y + 16, 6, 14, 0xff4444);
+  b.setStrokeStyle(1, 0xff8888, 0.7); // Light red glow
   scene.physics.add.existing(b);
   if (b.body && b.body.setSize) b.body.setSize(6, 14, true);
   b.body.setAllowGravity(false);
@@ -944,7 +990,18 @@ function spawnEnemy(scene, platform) {
   const ew = 28;
   const ey = platform.y - ph / 2 - eh / 2; // sit on top of platform visually
   const enemy = scene.add.rectangle(ex, ey, ew, eh, 0xff2222);
+  enemy.setStrokeStyle(1, 0xff6666, 0.8); // Red glow outline
   scene.physics.add.existing(enemy);
+  
+  // Subtle pulsing animation for enemies
+  scene.tweens.add({
+    targets: enemy,
+    alpha: { from: 1, to: 0.85 },
+    duration: 800,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
   
   // Configure physics body FIRST
   enemy.body.setSize(ew, eh, true);
@@ -1006,6 +1063,25 @@ function updateEnemies(scene, deltaMs) {
 function onBulletHitsEnemy(scene, bullet, enemy) {
   if (bullet && bullet.destroy) bullet.destroy();
   if (enemy && enemy.active) {
+    // Particle burst effect on enemy death
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const particle = scene.add.rectangle(enemy.x, enemy.y, 4, 4, 0xff6666);
+      scene.physics.add.existing(particle);
+      particle.body.setVelocity(
+        Math.cos(angle) * 150,
+        Math.sin(angle) * 150
+      );
+      particle.body.setGravity(0, 300);
+      scene.tweens.add({
+        targets: particle,
+        alpha: 0,
+        scale: 0,
+        duration: 500,
+        onComplete: () => particle.destroy()
+      });
+    }
+    
     // Remove from platform list
     const p = enemy.platformRef;
     if (p && p.enemies) p.enemies = p.enemies.filter(x => x !== enemy);
