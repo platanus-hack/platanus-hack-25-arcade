@@ -198,6 +198,9 @@ function create() {
   const scene = this;
   // Bootfall scene init tone
   playTone(this, 440, 0.1);
+  
+  // MUSIC
+  // playBackgroundMusic(this);
   // Reset core state on scene start
   if (this.physics && this.physics.world && this.physics.world.isPaused) this.physics.world.resume();
   gameOver = false;
@@ -582,7 +585,7 @@ function maybeSpawnEnemies(scene, platform) {
   const pw = platform.displayWidth || 100;
   // Decide count: 0-2, bias to fewer, and ensure max 2
   let count = 0;
-  if (Phaser.Math.Between(0, 99) < 25) count = 1;
+  if (Phaser.Math.Between(0, 99) < 45) count = 1;
   if (pw > 140 && Phaser.Math.Between(0, 99) < 12) count = Math.min(2, count + 1);
   for (let i = 0; i < count && platform.enemies.length < 2; i++) {
     spawnEnemy(scene, platform);
@@ -751,9 +754,106 @@ function playTone(scene, frequency, duration) {
   oscillator.frequency.value = frequency;
   oscillator.type = 'square';
 
-  gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+  gainNode.gain.setValueAtTime(0.03, audioContext.currentTime);
   gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
 
   oscillator.start(audioContext.currentTime);
   oscillator.stop(audioContext.currentTime + duration);
+}
+
+// MUSIC
+function playBackgroundMusic(scene) {
+  const audioContext = scene.sound.context;
+  
+  // Music parameters (easy to modify)
+  const tempo = 120; // BPM
+  const beatDuration = 60 / tempo; // Duration of one beat in seconds
+  const loopBars = 4; // Number of bars in the loop
+  const loopDuration = beatDuration * 4 * loopBars; // 4 beats per bar
+  
+  // Funky bass line pattern (note frequencies in Hz)
+  const bassPattern = [
+    { note: 110, start: 0, duration: 0.15 },      // A2
+    { note: 110, start: 0.5, duration: 0.1 },     // A2
+    { note: 146.83, start: 1, duration: 0.15 },   // D3
+    { note: 110, start: 1.75, duration: 0.1 },    // A2
+    { note: 123.47, start: 2.5, duration: 0.15 }, // B2
+    { note: 110, start: 3.25, duration: 0.1 },    // A2
+    { note: 146.83, start: 4, duration: 0.2 },    // D3
+    { note: 123.47, start: 4.75, duration: 0.1 }, // B2
+    { note: 98, start: 5.5, duration: 0.15 },     // G2
+    { note: 110, start: 6.25, duration: 0.1 },    // A2
+    { note: 146.83, start: 7, duration: 0.2 },    // D3
+    { note: 110, start: 7.75, duration: 0.1 }     // A2
+  ];
+  
+  // Melody pattern (higher notes)
+  const melodyPattern = [
+    { note: 440, start: 0.25, duration: 0.1 },    // A4
+    { note: 493.88, start: 1.25, duration: 0.1 }, // B4
+    { note: 587.33, start: 2.25, duration: 0.15 },// D5
+    { note: 493.88, start: 3, duration: 0.1 },    // B4
+    { note: 523.25, start: 4.25, duration: 0.1 }, // C5
+    { note: 587.33, start: 5.25, duration: 0.15 },// D5
+    { note: 659.25, start: 6.5, duration: 0.2 },  // E5
+    { note: 587.33, start: 7.25, duration: 0.1 }  // D5
+  ];
+  
+  function scheduleLoop(startTime) {
+    // Schedule bass notes
+    bassPattern.forEach(({ note, start, duration }) => {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      
+      osc.type = 'sawtooth';
+      osc.frequency.value = note;
+      
+      const noteStart = startTime + start * beatDuration;
+      const noteEnd = noteStart + duration;
+      
+      gain.gain.setValueAtTime(0.08, noteStart);
+      gain.gain.exponentialRampToValueAtTime(0.01, noteEnd);
+      
+      osc.start(noteStart);
+      osc.stop(noteEnd);
+    });
+    
+    // Schedule melody notes
+    melodyPattern.forEach(({ note, start, duration }) => {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      
+      osc.type = 'square';
+      osc.frequency.value = note;
+      
+      const noteStart = startTime + start * beatDuration;
+      const noteEnd = noteStart + duration;
+      
+      gain.gain.setValueAtTime(0.04, noteStart);
+      gain.gain.exponentialRampToValueAtTime(0.01, noteEnd);
+      
+      osc.start(noteStart);
+      osc.stop(noteEnd);
+    });
+    
+    // Schedule next loop immediately for seamless playback
+    const nextLoopTime = startTime + loopDuration;
+    if (!gameOver && nextLoopTime < audioContext.currentTime + 10) {
+      scheduleLoop(nextLoopTime);
+    } else {
+      // Check later if we should continue
+      setTimeout(() => {
+        if (!gameOver) scheduleLoop(audioContext.currentTime);
+      }, (loopDuration - 0.5) * 1000);
+    }
+  }
+  
+  // Start the music loop
+  scheduleLoop(audioContext.currentTime);
 }
