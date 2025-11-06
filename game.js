@@ -527,9 +527,9 @@ function createPlatform(scene, y) {
   if (rect.body) {
     // One-way: collide only on top face
     rect.body.checkCollision.up = true;
-    rect.body.checkCollision.down = false;
-    rect.body.checkCollision.left = false;
-    rect.body.checkCollision.right = false;
+    rect.body.checkCollision.down = true; // now collide from below too (solid from bottom)
+    rect.body.checkCollision.left = true;  // enable side collisions
+    rect.body.checkCollision.right = true; // enable side collisions
   }
   rect.enemies = [];
   if (platformsGroup) platformsGroup.add(rect);
@@ -545,7 +545,14 @@ function positionPlatform(scene, rect, y) {
   rect.displayHeight = 12;
   rect.x = x + width / 2;
   rect.y = y;
-  if (rect.body && rect.body.updateFromGameObject) rect.body.updateFromGameObject();
+  if (rect.body) {
+    // ensure collisions remain solid on both top and bottom faces
+    rect.body.checkCollision.up = true;
+    rect.body.checkCollision.down = true;
+    rect.body.checkCollision.left = true;  // enable side collisions
+    rect.body.checkCollision.right = true; // enable side collisions
+    if (rect.body.updateFromGameObject) rect.body.updateFromGameObject();
+  }
   // Reset enemies on this platform and respawn
   if (rect.enemies && rect.enemies.length) {
     rect.enemies.forEach(e => e.destroy());
@@ -582,8 +589,8 @@ function maybeSpawnEnemies(scene, platform) {
   const pw = platform.displayWidth || 100;
   // Decide count: 0-2, bias to fewer, and ensure max 2
   let count = 0;
-  if (Phaser.Math.Between(0, 99) < 55) count = 1;
-  if (pw > 120 && Phaser.Math.Between(0, 99) < 35) count = Math.min(2, count + 1);
+  if (Phaser.Math.Between(0, 99) < 25) count = 1;
+  if (pw > 140 && Phaser.Math.Between(0, 99) < 12) count = Math.min(2, count + 1);
   for (let i = 0; i < count && platform.enemies.length < 2; i++) {
     spawnEnemy(scene, platform);
   }
