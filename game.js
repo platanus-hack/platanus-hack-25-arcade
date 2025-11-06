@@ -55,15 +55,51 @@ function menuCreate() {
   s.instructionsVisible = false;
   s.controlsVisible = false;
 
-  s.add.text(400, 130, 'CHAINFALL', {
-    fontSize: '64px', fontFamily: 'Arial, sans-serif', color: '#ffffff', align: 'center'
+  // Stylish animated title
+  const titleText = s.add.text(400, 130, 'CHAINFALL', {
+    fontSize: '72px', 
+    fontFamily: 'Arial, sans-serif', 
+    color: '#ffffff', 
+    align: 'center',
+    stroke: '#00ffff',
+    strokeThickness: 4
   }).setOrigin(0.5);
+  
+  // Title pulsing animation
+  s.tweens.add({
+    targets: titleText,
+    scale: { from: 1, to: 1.05 },
+    duration: 1500,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+  
+  // Subtitle
+  const subtitleText = s.add.text(400, 200, 'Chain your combos as you fall', {
+    fontSize: '20px',
+    fontFamily: 'Arial, sans-serif',
+    color: '#00ffff',
+    align: 'center',
+    style: 'italic'
+  }).setOrigin(0.5).setAlpha(0.8);
 
   // Explicit buttons to avoid mapping errors
   s.menuItems = [];
+  s.menuBorders = [];
   const mkBtn = (y, label, onClick) => {
+    // Button background/border
+    const border = s.add.rectangle(400, y, 280, 50, 0x001a1a, 0.5);
+    border.setStrokeStyle(2, 0x00ffff, 0.8);
+    s.menuBorders.push(border);
+    
+    // Button text
     const t = s.add.text(400, y, label, {
-      fontSize: '32px', fontFamily: 'Arial, sans-serif', color: '#00ffff'
+      fontSize: '32px', 
+      fontFamily: 'Arial, sans-serif', 
+      color: '#00ffff',
+      stroke: '#000000',
+      strokeThickness: 2
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     t.on('pointerover', () => { s.menuIndex = s.menuItems.indexOf(t); updateMenuVisuals(s); });
     t.on('pointerdown', onClick);
@@ -90,7 +126,17 @@ function menuCreate() {
   s.instructionsGroup = s.add.group();
   const iOv = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.86);
   const iT = s.add.text(400, 140, 'Instructions', { fontSize: '40px', fontFamily: 'Arial, sans-serif', color: '#ffff00' }).setOrigin(0.5);
-  const iBack = s.add.text(400, 520, 'Back', { fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#00ff00' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  
+  // Back button with border
+  const iBackBorder = s.add.rectangle(400, 520, 180, 50, 0x003300, 0.6);
+  iBackBorder.setStrokeStyle(2, 0x00ff00, 0.8);
+  const iBack = s.add.text(400, 520, 'Back', { 
+    fontSize: '28px', 
+    fontFamily: 'Arial, sans-serif', 
+    color: '#00ff00',
+    stroke: '#000000',
+    strokeThickness: 3
+  }).setOrigin(0.5).setInteractive({ useHandCursor: true });
   iBack.on('pointerdown', () => hideInstructions(s));
 
   // Graphics helper
@@ -135,7 +181,7 @@ function menuCreate() {
   const comboInfo2 = s.add.text(660, 444, 'Gain blue bullets; landing resets extras', { fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#aaaaaa' }).setOrigin(0.5);
 
   s.instructionsGroup.addMultiple([
-    iOv, iT, iBack,
+    iOv, iT, iBackBorder, iBack,
     moveTitle, keyA, keyD, keyW, txtA, txtD, txtW,
     centerTitle, plat, pRect, bullet, shootTxt, landTxt,
     comboTitle, comboPlat, comboPlayer, bb1, bb2, bb3, comboInfo1, comboInfo2,
@@ -143,6 +189,7 @@ function menuCreate() {
   ]);
   // Panel items for keyboard focus
   s.instrItems = [iBack];
+  s.instrBorders = [iBackBorder];
   s.instrIndex = 0;
   updateInstrVisuals(s);
   hideInstructions(s);
@@ -181,11 +228,22 @@ function menuCreate() {
     'Press any key to set Shoot\nCurrent: ' + currentShootKey.toUpperCase(),
     { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#dddddd', align: 'center' }
   ).setOrigin(0.5);
-  const cBack = s.add.text(400, 420, 'Back', { fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#00ff00' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  
+  // Back button with border
+  const cBackBorder = s.add.rectangle(400, 420, 180, 50, 0x003300, 0.6);
+  cBackBorder.setStrokeStyle(2, 0x00ff00, 0.8);
+  const cBack = s.add.text(400, 420, 'Back', { 
+    fontSize: '28px', 
+    fontFamily: 'Arial, sans-serif', 
+    color: '#00ff00',
+    stroke: '#000000',
+    strokeThickness: 3
+  }).setOrigin(0.5).setInteractive({ useHandCursor: true });
   cBack.on('pointerdown', () => hideControls(s));
-  s.controlsGroup.addMultiple([cOv, cT, s.controlsInfo, cBack]);
+  s.controlsGroup.addMultiple([cOv, cT, s.controlsInfo, cBackBorder, cBack]);
   // Panel items for keyboard focus
   s.controlsItems = [cBack];
+  s.controlsBorders = [cBackBorder];
   s.controlsIndex = 0;
   updateControlsVisuals(s);
   hideControls(s);
@@ -232,8 +290,18 @@ function menuUpdate() {
 function updateMenuVisuals(s) {
   s.menuItems.forEach((t, i) => {
     const sel = i === s.menuIndex;
-    t.setScale(sel ? 1.12 : 1);
+    const border = s.menuBorders[i];
+    
+    // Text effects
+    t.setScale(sel ? 1.15 : 1);
     t.setColor(sel ? '#ffffff' : '#00ffff');
+    
+    // Border effects
+    if (border) {
+      border.setScale(sel ? 1.08 : 1);
+      border.setStrokeStyle(sel ? 3 : 2, sel ? 0xffffff : 0x00ffff, sel ? 1 : 0.8);
+      border.setFillStyle(0x001a1a, sel ? 0.8 : 0.5);
+    }
   });
 }
 
@@ -241,8 +309,19 @@ function updateInstrVisuals(s) {
   if (!s.instrItems) return;
   s.instrItems.forEach((t, i) => {
     const sel = i === s.instrIndex;
-    t.setScale(sel ? 1.12 : 1);
-    t.setColor(sel ? '#ffffff' : '#00ff00');
+    const border = s.instrBorders ? s.instrBorders[i] : null;
+    
+    // Enhanced visual feedback for Back button
+    t.setScale(sel ? 1.25 : 1);
+    t.setColor(sel ? '#ffff00' : '#00ff00');
+    t.setStroke(sel ? '#ffffff' : '#000000', sel ? 4 : 3);
+    
+    // Border effects
+    if (border) {
+      border.setScale(sel ? 1.12 : 1);
+      border.setStrokeStyle(sel ? 3 : 2, sel ? 0xffff00 : 0x00ff00, sel ? 1 : 0.8);
+      border.setFillStyle(0x003300, sel ? 0.9 : 0.6);
+    }
   });
 }
 
@@ -250,8 +329,19 @@ function updateControlsVisuals(s) {
   if (!s.controlsItems) return;
   s.controlsItems.forEach((t, i) => {
     const sel = i === s.controlsIndex;
-    t.setScale(sel ? 1.12 : 1);
-    t.setColor(sel ? '#ffffff' : '#00ff00');
+    const border = s.controlsBorders ? s.controlsBorders[i] : null;
+    
+    // Enhanced visual feedback for Back button
+    t.setScale(sel ? 1.25 : 1);
+    t.setColor(sel ? '#ffff00' : '#00ff00');
+    t.setStroke(sel ? '#ffffff' : '#000000', sel ? 4 : 3);
+    
+    // Border effects
+    if (border) {
+      border.setScale(sel ? 1.12 : 1);
+      border.setStrokeStyle(sel ? 3 : 2, sel ? 0xffff00 : 0x00ff00, sel ? 1 : 0.8);
+      border.setFillStyle(0x003300, sel ? 0.9 : 0.6);
+    }
   });
 }
 
@@ -614,16 +704,26 @@ function endGame(scene) {
   overlay.setDepth(9999);
   overlay.setScrollFactor(0);
 
-  // Game title on overlay
+  // Game title on overlay (styled like main menu)
   const titleText = scene.add.text(400, 70, 'CHAINFALL', {
-    fontSize: '36px',
+    fontSize: '42px',
     fontFamily: 'Arial, sans-serif',
     color: '#ffffff',
-    stroke: '#000000',
+    stroke: '#00ffff',
     strokeThickness: 4
   }).setOrigin(0.5);
   titleText.setDepth(10000);
   titleText.setScrollFactor(0);
+  
+  // Subtle pulsing for title
+  scene.tweens.add({
+    targets: titleText,
+    scale: { from: 1, to: 1.03 },
+    duration: 1500,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
 
   const cam = scene.cameras.main;
   const cx = player ? (player.x - cam.scrollX) : 400;
@@ -665,7 +765,7 @@ function endGame(scene) {
   finalScoreText.setScrollFactor(0);
 
   // Restart instruction with subtle animation
-  const restartText = scene.add.text(cx, cy + 180, 'Press Button A or START to Restart', {
+  const restartText = scene.add.text(cx, cy + 180, 'Press ' + currentShootKey.toUpperCase() + ' to Restart', {
     fontSize: '24px',
     fontFamily: 'Arial, sans-serif',
     color: '#ffff00',
@@ -686,19 +786,44 @@ function endGame(scene) {
     ease: 'Sine.easeInOut'
   });
 
-  // Main Menu button
+  // Main Menu button with border (styled like main menu)
+  const menuBorder = scene.add.rectangle(cx, cy + 240, 240, 50, 0x001a1a, 0.6);
+  menuBorder.setStrokeStyle(2, 0x00ffff, 0.8);
+  menuBorder.setDepth(10000);
+  menuBorder.setScrollFactor(0);
+  
   const menuBtn = scene.add.text(cx, cy + 240, 'Main Menu', {
     fontSize: '28px',
     fontFamily: 'Arial, sans-serif',
-    color: '#ffffff',
+    color: '#00ffff',
     align: 'center',
     stroke: '#000000',
     strokeThickness: 3
   }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  
+  // Hover effects
+  menuBtn.on('pointerover', () => {
+    menuBtn.setScale(1.15);
+    menuBtn.setColor('#ffffff');
+    menuBorder.setScale(1.08);
+    menuBorder.setStrokeStyle(3, 0xffffff, 1);
+    menuBorder.setFillStyle(0x001a1a, 0.8);
+  });
+  
+  menuBtn.on('pointerout', () => {
+    menuBtn.setScale(1);
+    menuBtn.setColor('#00ffff');
+    menuBorder.setScale(1);
+    menuBorder.setStrokeStyle(2, 0x00ffff, 0.8);
+    menuBorder.setFillStyle(0x001a1a, 0.6);
+  });
+  
   menuBtn.on('pointerdown', () => {
     scene.scene.start('menu');
   });
-  menuBtn.setDepth(10000);
+  
+  menuBtn.setDepth(10001);
+  menuBorder.setDepth(10000);
   menuBtn.setScrollFactor(0);
 }
 
