@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PLAT-MAN Cover - Professional</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        canvas {
+            border: 3px solid #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        button {
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #FFD700;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+        }
+        button:hover {
+            background: #FFA500;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <button onclick="downloadCover()">⬇️ Descargar Cover Profesional</button>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Fondo degradado más profesional
+        const bgGrad = ctx.createRadialGradient(400, 300, 100, 400, 300, 600);
+        bgGrad.addColorStop(0, '#2c1810');
+        bgGrad.addColorStop(0.4, '#1a1410');
+        bgGrad.addColorStop(1, '#0a0808');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, 800, 600);
+        
+        // Patrón de puntos sutiles
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.03)';
+        for (let i = 0; i < 100; i++) {
+            const x = Math.random() * 800;
+            const y = Math.random() * 600;
+            const size = Math.random() * 3;
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Gorila profesional y detallado
+        const drawGorilla = (cx, cy, scale) => {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(scale, scale);
+            
+            // Sombra realista
+            const shadow = ctx.createRadialGradient(0, 75, 10, 0, 75, 50);
+            shadow.addColorStop(0, 'rgba(0, 0, 0, 0.6)');
+            shadow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = shadow;
+            ctx.beginPath();
+            ctx.ellipse(0, 75, 50, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Piernas con volumen
+            const legGrad = ctx.createLinearGradient(-15, 40, -15, 65);
+            legGrad.addColorStop(0, '#4a3020');
+            legGrad.addColorStop(0.5, '#3a2515');
+            legGrad.addColorStop(1, '#2a1810');
+            ctx.fillStyle = legGrad;
+            
+            // Pierna izquierda
+            ctx.beginPath();
+            ctx.ellipse(-18, 52, 12, 20, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Pie izquierdo
+            ctx.fillStyle = '#2a1810';
+            ctx.beginPath();
+            ctx.ellipse(-20, 68, 14, 8, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pierna derecha
+            ctx.fillStyle = legGrad;
+            ctx.beginPath();
+            ctx.ellipse(18, 52, 12, 20, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Pie derecho
+            ctx.fillStyle = '#2a1810';
+            ctx.beginPath();
+            ctx.ellipse(20, 68, 14, 8, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Torso robusto con músculo
+            const torsoGrad = ctx.createRadialGradient(0, 25, 15, 0, 35, 45);
+            torsoGrad.addColorStop(0, '#6b4a32');
+            torsoGrad.addColorStop(0.4, '#52362a');
+            torsoGrad.addColorStop(0.7, '#3d2820');
+            torsoGrad.addColorStop(1, '#2a1c15');
+            ctx.fillStyle = torsoGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 35, 38, 30, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pecho con definición
+            const chestGrad = ctx.createRadialGradient(0, 35, 10, 0, 40, 25);
+            chestGrad.addColorStop(0, '#b08968');
+            chestGrad.addColorStop(0.5, '#8d6f5a');
+            chestGrad.addColorStop(1, '#6b5447');
+            ctx.fillStyle = chestGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 40, 22, 18, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Brazos largos de gorila
+            const armGrad = ctx.createLinearGradient(0, 25, 0, 65);
+            armGrad.addColorStop(0, '#4a3020');
+            armGrad.addColorStop(1, '#2a1810');
+            
+            // Brazo izquierdo
+            ctx.fillStyle = armGrad;
+            ctx.beginPath();
+            ctx.ellipse(-38, 42, 13, 32, 0.35, 0, Math.PI * 2);
+            ctx.fill();
+            // Antebrazo izquierdo
+            ctx.beginPath();
+            ctx.ellipse(-45, 65, 10, 18, 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            // Mano izquierda
+            ctx.fillStyle = '#3d2820';
+            ctx.beginPath();
+            ctx.ellipse(-48, 78, 12, 10, 0.15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Brazo derecho
+            ctx.fillStyle = armGrad;
+            ctx.beginPath();
+            ctx.ellipse(38, 42, 13, 32, -0.35, 0, Math.PI * 2);
+            ctx.fill();
+            // Antebrazo derecho
+            ctx.beginPath();
+            ctx.ellipse(45, 65, 10, 18, -0.25, 0, Math.PI * 2);
+            ctx.fill();
+            // Mano derecha
+            ctx.fillStyle = '#3d2820';
+            ctx.beginPath();
+            ctx.ellipse(48, 78, 12, 10, -0.15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hombros anchos
+            ctx.fillStyle = torsoGrad;
+            ctx.beginPath();
+            ctx.ellipse(-28, 22, 16, 12, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(28, 22, 16, 12, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Cuello
+            ctx.fillStyle = '#4a3020';
+            ctx.fillRect(-10, 5, 20, 15);
+            
+            // Cabeza con más detalle
+            const headGrad = ctx.createRadialGradient(0, -10, 15, 0, -5, 35);
+            headGrad.addColorStop(0, '#8d6f5a');
+            headGrad.addColorStop(0.6, '#6b5447');
+            headGrad.addColorStop(1, '#4a3020');
+            ctx.fillStyle = headGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, -5, 32, 28, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Cresta de gorila
+            ctx.fillStyle = '#3d2820';
+            ctx.beginPath();
+            ctx.ellipse(0, -28, 28, 12, 0, 0, Math.PI);
+            ctx.fill();
+            
+            // Orejas grandes
+            ctx.fillStyle = '#5a4030';
+            ctx.strokeStyle = '#3d2820';
+            ctx.lineWidth = 2;
+            // Oreja izquierda
+            ctx.beginPath();
+            ctx.ellipse(-30, -8, 10, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            // Oreja derecha
+            ctx.beginPath();
+            ctx.ellipse(30, -8, 10, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Hocico prominente
+            const muzzleGrad = ctx.createRadialGradient(0, 10, 8, 0, 15, 22);
+            muzzleGrad.addColorStop(0, '#d4b89e');
+            muzzleGrad.addColorStop(0.6, '#b8a090');
+            muzzleGrad.addColorStop(1, '#8d6f5a');
+            ctx.fillStyle = muzzleGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 15, 20, 16, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Nariz ancha
+            ctx.fillStyle = '#1a1410';
+            ctx.beginPath();
+            ctx.ellipse(0, 10, 8, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Fosas nasales
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.ellipse(-4, 11, 2, 3, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(4, 11, 2, 3, -0.2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ojos expresivos
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(-12, -3, 7, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(12, -3, 7, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Iris y pupilas
+            ctx.fillStyle = '#4a3020';
+            ctx.beginPath();
+            ctx.ellipse(-12, -2, 5, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(12, -2, 5, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(-12, -1, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(12, -1, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Brillo en los ojos
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.arc(-13, -3, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(11, -3, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Cejas gruesas de gorila
+            ctx.strokeStyle = '#2a1810';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-22, -10);
+            ctx.quadraticCurveTo(-12, -13, -4, -10);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(4, -10);
+            ctx.quadraticCurveTo(12, -13, 22, -10);
+            ctx.stroke();
+            
+            // Boca amigable
+            ctx.strokeStyle = '#4a3020';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 20, 8, 0.1, Math.PI - 0.1);
+            ctx.stroke();
+            
+            // Dientes (opcional, para hacerlo más amigable)
+            ctx.fillStyle = '#ffffff';
+            for (let i = -1; i <= 1; i++) {
+                ctx.fillRect(i * 6 - 2, 22, 3, 4);
+            }
+            
+            ctx.restore();
+        };
+        
+        // Dibujar bananas decorativas
+        const drawBanana = (x, y, scale, rotation) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            ctx.scale(scale, scale);
+            
+            const mainGrad = ctx.createLinearGradient(0, 0, 25, 20);
+            mainGrad.addColorStop(0, '#FFF9C4');
+            mainGrad.addColorStop(0.3, '#FFF176');
+            mainGrad.addColorStop(0.7, '#FFD54F');
+            mainGrad.addColorStop(1, '#FFC107');
+            ctx.fillStyle = mainGrad;
+            
+            ctx.beginPath();
+            ctx.moveTo(5, 15);
+            ctx.bezierCurveTo(8, 3, 15, 1, 23, 4);
+            ctx.bezierCurveTo(28, 6, 29, 9, 26, 13);
+            ctx.bezierCurveTo(22, 18, 13, 20, 8, 17);
+            ctx.bezierCurveTo(4, 16, 4, 15, 5, 15);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.strokeStyle = '#FFA000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Brillo
+            const highlight = ctx.createRadialGradient(18, 8, 2, 18, 8, 8);
+            highlight.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+            highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = highlight;
+            ctx.beginPath();
+            ctx.ellipse(18, 8, 8, 4, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        };
+        
+        // Gorila principal centrado
+        drawGorilla(400, 310, 2.2);
+        
+        // Bananas decorativas alrededor
+        drawBanana(150, 200, 1.2, 0.3);
+        drawBanana(650, 250, 1.3, -0.4);
+        drawBanana(180, 450, 1.1, 0.5);
+        drawBanana(620, 450, 1.2, -0.3);
+        drawBanana(100, 350, 0.9, 0.6);
+        drawBanana(700, 380, 1.0, -0.5);
+        
+        // Marco decorativo superior
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.1)';
+        ctx.fillRect(0, 0, 800, 120);
+        
+        // Marco decorativo inferior
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.1)';
+        ctx.fillRect(0, 480, 800, 120);
+        
+        // Título principal centrado con efecto 3D
+        ctx.save();
+        ctx.textAlign = 'center';
+        
+        // Sombra del título (efecto 3D)
+        for (let i = 8; i > 0; i--) {
+            ctx.fillStyle = `rgba(139, 69, 19, ${0.3 * (i / 8)})`;
+            ctx.font = 'bold 110px Arial';
+            ctx.fillText('PLAT-MAN', 400 + i, 85 + i);
+        }
+        
+        // Contorno del título
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 10;
+        ctx.font = 'bold 110px Arial';
+        ctx.strokeText('PLAT-MAN', 400, 85);
+        
+        // Título principal
+        const titleGrad = ctx.createLinearGradient(0, 40, 0, 100);
+        titleGrad.addColorStop(0, '#FFD700');
+        titleGrad.addColorStop(0.5, '#FFA500');
+        titleGrad.addColorStop(1, '#FF8C00');
+        ctx.fillStyle = titleGrad;
+        ctx.fillText('PLAT-MAN', 400, 85);
+        
+        // Subtítulo centrado
+        ctx.font = 'bold 32px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 4;
+        ctx.strokeText('¡Escapa de los Agentes!', 400, 540);
+        ctx.fillStyle = '#FFD700';
+        ctx.fillText('¡Escapa de los Agentes!', 400, 540);
+        
+        // Footer
+        ctx.font = 'bold 20px Arial';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillText('Platanus Hack 25 • Arcade Challenge', 400, 575);
+        
+        ctx.restore();
+        
+        function downloadCover() {
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'cover.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                alert('✅ ¡Cover descargado! Ahora cópialo a:\n~/Downloads/cover.png → platanus-hack-25-arcade/');
+            });
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,20 @@
+{
+  "name": "platanus-phaser-game",
+  "version": "1.0.0",
+  "description": "Plat-Man - Juego de gorila con Phaser 3",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "vite": "^7.2.1"
+  }
+}
