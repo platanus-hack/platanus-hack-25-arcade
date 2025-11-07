@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Generate Cover</title>
+</head>
+<body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <br>
+    <button onclick="downloadCover()">Download cover.png</button>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Fondo degradado
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, 600);
+        bgGrad.addColorStop(0, '#1a0a2e');
+        bgGrad.addColorStop(0.5, '#16213e');
+        bgGrad.addColorStop(1, '#0f3460');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, 800, 600);
+        
+        // Estrellas de fondo
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        for (let i = 0; i < 50; i++) {
+            const x = Math.random() * 800;
+            const y = Math.random() * 600;
+            const size = Math.random() * 2;
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Dibujar gorila grande (centro-izquierda)
+        const drawGorilla = (cx, cy, scale) => {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(scale, scale);
+            
+            // Sombra
+            ctx.fillStyle = "rgba(0,0,0,0.5)";
+            ctx.beginPath();
+            ctx.ellipse(0, 50, 35, 12, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Piernas
+            const legGrad = ctx.createLinearGradient(0, 25, 0, 40);
+            legGrad.addColorStop(0, "#5a3a22");
+            legGrad.addColorStop(1, "#3e2816");
+            ctx.fillStyle = legGrad;
+            ctx.beginPath();
+            ctx.ellipse(-12, 35, 10, 15, 0.15, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(12, 35, 10, 15, -0.15, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Cuerpo
+            const bodyGrad = ctx.createRadialGradient(0, 15, 12, 0, 20, 35);
+            bodyGrad.addColorStop(0, "#6b4423");
+            bodyGrad.addColorStop(0.6, "#4a2f1a");
+            bodyGrad.addColorStop(1, "#2e1c0f");
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 20, 30, 28, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Pecho
+            const chestGrad = ctx.createRadialGradient(0, 20, 6, 0, 24, 20);
+            chestGrad.addColorStop(0, "#8d6a4c");
+            chestGrad.addColorStop(1, "#6b4423");
+            ctx.fillStyle = chestGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 24, 18, 14, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Brazos
+            const armGrad = ctx.createLinearGradient(0, 15, 0, 35);
+            armGrad.addColorStop(0, "#5a3a22");
+            armGrad.addColorStop(1, "#3e2816");
+            ctx.fillStyle = armGrad;
+            ctx.beginPath();
+            ctx.ellipse(-26, 25, 10, 28, 0.3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(-28, 42, 8, 10, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(26, 25, 10, 28, -0.3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(28, 42, 8, 10, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Cabeza
+            const headGrad = ctx.createRadialGradient(0, -8, 10, 0, -6, 28);
+            headGrad.addColorStop(0, "#8f6241");
+            headGrad.addColorStop(1, "#543720");
+            ctx.fillStyle = headGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, -6, 28, 24, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Orejas
+            ctx.fillStyle = "#6b4423";
+            ctx.beginPath();
+            ctx.ellipse(-22, -8, 8, 10, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(22, -8, 8, 10, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Hocico
+            const muzzleGrad = ctx.createRadialGradient(0, 4, 6, 0, 6, 16);
+            muzzleGrad.addColorStop(0, "#caa17d");
+            muzzleGrad.addColorStop(1, "#8d6a4c");
+            ctx.fillStyle = muzzleGrad;
+            ctx.beginPath();
+            ctx.ellipse(0, 6, 16, 13, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Nariz
+            ctx.fillStyle = "#2e1c0f";
+            ctx.beginPath();
+            ctx.ellipse(0, 3, 5, 4, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Ojos
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.ellipse(-10, -4, 6, 7, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(10, -4, 6, 7, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            ctx.fillStyle = "#1a1a1a";
+            ctx.beginPath();
+            ctx.arc(-10, -2, 3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(10, -2, 3, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Cejas
+            ctx.strokeStyle = "#2e1c0f";
+            ctx.lineWidth = 4;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(-16, -10);
+            ctx.quadraticCurveTo(-10, -12, -4, -10);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(4, -10);
+            ctx.quadraticCurveTo(10, -12, 16, -10);
+            ctx.stroke();
+            
+            ctx.restore();
+        };
+        
+        // Dibujar banana
+        const drawBanana = (x, y, scale) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            const mainGrad = ctx.createLinearGradient(0, 0, 20, 15);
+            mainGrad.addColorStop(0, "#FFF176");
+            mainGrad.addColorStop(0.5, "#FFD54F");
+            mainGrad.addColorStop(1, "#FFC107");
+            ctx.fillStyle = mainGrad;
+            
+            ctx.beginPath();
+            ctx.moveTo(5, 12);
+            ctx.bezierCurveTo(7, 4, 12, 2, 18, 4);
+            ctx.bezierCurveTo(21, 5, 22, 7, 20, 10);
+            ctx.bezierCurveTo(18, 14, 11, 16, 7, 14);
+            ctx.bezierCurveTo(5, 13, 5, 12, 5, 12);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.strokeStyle = "#B8860B";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            ctx.restore();
+        };
+        
+        // Dibujar agente
+        const drawAgent = (x, y, scale) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            
+            // Cabeza
+            ctx.fillStyle = "#ffd4a3";
+            ctx.beginPath();
+            ctx.arc(0, -8, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Traje
+            ctx.fillStyle = "#8B0000";
+            ctx.fillRect(-8, 0, 16, 20);
+            
+            // Corbata
+            ctx.fillStyle = "#003366";
+            ctx.beginPath();
+            ctx.moveTo(0, 2);
+            ctx.lineTo(-3, 4);
+            ctx.lineTo(-3, 18);
+            ctx.lineTo(0, 20);
+            ctx.lineTo(3, 18);
+            ctx.lineTo(3, 4);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Ojos enojados
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.ellipse(-4, -8, 2, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(4, -8, 2, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = "#000000";
+            ctx.beginPath();
+            ctx.arc(-4, -8, 1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(4, -8, 1, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        };
+        
+        // Gorila principal
+        drawGorilla(250, 320, 2.5);
+        
+        // Bananas flotantes
+        drawBanana(150, 150, 1.5);
+        drawBanana(600, 200, 1.2);
+        drawBanana(650, 450, 1.3);
+        
+        // Agentes persiguiendo
+        drawAgent(500, 350, 1.8);
+        drawAgent(620, 380, 1.5);
+        
+        // Título principal
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetX = 4;
+        ctx.shadowOffsetY = 4;
+        
+        ctx.font = 'bold 120px Arial';
+        ctx.fillStyle = '#FFD700';
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 8;
+        ctx.textAlign = 'center';
+        ctx.strokeText('PLAT-MAN', 530, 120);
+        ctx.fillText('PLAT-MAN', 530, 120);
+        ctx.restore();
+        
+        // Subtítulo
+        ctx.font = 'bold 28px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.fillText('¡Escapa de los Agentes!', 530, 180);
+        
+        // Características
+        ctx.font = 'bold 20px Arial';
+        ctx.fillStyle = '#FFD700';
+        ctx.textAlign = 'left';
+        ctx.fillText('🍌 Recolecta Plátanos', 480, 250);
+        ctx.fillText('👔 Evita Agentes', 480, 290);
+        ctx.fillText('⚡ Modo Poder', 480, 330);
+        ctx.fillText('🏆 3 Niveles', 480, 370);
+        
+        // Footer
+        ctx.font = 'bold 18px Arial';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.textAlign = 'center';
+        ctx.fillText('Platanus Hack 25 - Arcade Challenge', 400, 560);
+        
+        function downloadCover() {
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'cover.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                alert('¡Cover descargado! Ahora cópialo a la carpeta platanus-hack-25-arcade');
+            });
+        }
+    </script>
+</body>
+</html>
+

@@ -1,18 +1,20 @@
 {
-  "name": "platanus-hack-25-arcade",
+  "name": "platanus-phaser-game",
   "version": "1.0.0",
-  "description": "Phaser arcade game challenge starter kit",
+  "description": "Plat-Man - Juego de gorila con Phaser 3",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:old": "tsx --watch dev-server.ts",
-    "check-restrictions": "tsx check-restrictions.ts"
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "phaser": "^3.90.0"
   },
   "devDependencies": {
-    "@swc/core": "^1.13.5",
-    "@types/node": "^22.10.5",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vite": "^7.1.12"
+    "vite": "^7.2.1"
   }
 }
