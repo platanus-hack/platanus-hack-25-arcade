@@ -46,6 +46,7 @@ const GameScene = { key: 'game', create: create, update: update };
 const MenuScene = { key: 'menu', create: menuCreate, update: menuUpdate };
 
 let currentShootKey = 'e';
+let currentRayKey = 'i';
 
 function menuCreate() {
   const s = this;
@@ -234,12 +235,28 @@ function menuCreate() {
   // Controls overlay (hidden by default)
   s.controlsGroup = s.add.group();
   const cOv = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.86);
-  const cT = s.add.text(400, 180, 'Controls', { fontSize: '40px', fontFamily: 'Arial, sans-serif', color: '#ffff00' }).setOrigin(0.5);
-  s.controlsInfo = s.add.text(400, 300,
-    'Press any key to set Shoot\nCurrent: ' + currentShootKey.toUpperCase(),
-    { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#dddddd', align: 'center' }
+  const cT = s.add.text(400, 150, 'Controls', { fontSize: '40px', fontFamily: 'Arial, sans-serif', color: '#ffff00' }).setOrigin(0.5);
+  s.controlsInfo = s.add.text(400, 200,
+    'Select an item and press a key to rebind',
+    { fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#dddddd', align: 'center' }
   ).setOrigin(0.5);
-  
+
+  // Normal Shoot row
+  const cShootBorder = s.add.rectangle(400, 270, 360, 46, 0x001a1a, 0.5);
+  cShootBorder.setStrokeStyle(2, 0x00ffff, 0.8);
+  const cShoot = s.add.text(400, 270, 'Normal Shoot: ' + currentShootKey.toUpperCase(), {
+    fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#00ffff', stroke: '#000000', strokeThickness: 2
+  }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  cShoot.on('pointerover', () => { s.controlsIndex = 0; updateControlsVisuals(s); });
+
+  // Ray Gun row
+  const cRayBorder = s.add.rectangle(400, 330, 360, 46, 0x1a1a00, 0.5);
+  cRayBorder.setStrokeStyle(2, 0xEEF527, 0.8);
+  const cRay = s.add.text(400, 330, 'Ray Gun: ' + currentRayKey.toUpperCase(), {
+    fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#EEF527', stroke: '#000000', strokeThickness: 2
+  }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  cRay.on('pointerover', () => { s.controlsIndex = 1; updateControlsVisuals(s); });
+
   // Back button with border
   const cBackBorder = s.add.rectangle(400, 420, 180, 50, 0x003300, 0.6);
   cBackBorder.setStrokeStyle(2, 0x00ff00, 0.8);
@@ -250,11 +267,13 @@ function menuCreate() {
     stroke: '#000000',
     strokeThickness: 3
   }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  cBack.on('pointerover', () => { s.controlsIndex = 2; updateControlsVisuals(s); });
   cBack.on('pointerdown', () => hideControls(s));
-  s.controlsGroup.addMultiple([cOv, cT, s.controlsInfo, cBackBorder, cBack]);
+
+  s.controlsGroup.addMultiple([cOv, cT, s.controlsInfo, cShootBorder, cShoot, cRayBorder, cRay, cBackBorder, cBack]);
   // Panel items for keyboard focus
-  s.controlsItems = [cBack];
-  s.controlsBorders = [cBackBorder];
+  s.controlsItems = [cShoot, cRay, cBack];
+  s.controlsBorders = [cShootBorder, cRayBorder, cBackBorder];
   s.controlsIndex = 0;
   updateControlsVisuals(s);
   hideControls(s);
@@ -273,23 +292,35 @@ function menuCreate() {
     }
     
     // Navigation keys
-    if (key === 'P1U' || key === 'P1D' || key === 'P1L' || key === 'P1R') {
-      s.controlsIndex = 0; // Only one item, keep highlighted
+    if (key === 'P1U') {
+      s.controlsIndex = (s.controlsIndex + s.controlsItems.length - 1) % s.controlsItems.length;
+      updateControlsVisuals(s);
+      return;
+    }
+    if (key === 'P1D') {
+      s.controlsIndex = (s.controlsIndex + 1) % s.controlsItems.length;
       updateControlsVisuals(s);
       return;
     }
     
-    // Confirm with P1A
-    if (key === 'P1A') {
+    // Confirm with P1A on Back
+    if (key === 'P1A' && s.controlsIndex === 2) {
       hideControls(s);
       return;
     }
     
-    // Rebind shoot key with any single letter
+    // Rebind selected action with any single letter
     if (raw && raw.length === 1) {
-      rebindShootKey(raw.toLowerCase());
-      if (s.controlsInfo) s.controlsInfo.setText('Press any key to set Shoot\nCurrent: ' + currentShootKey.toUpperCase());
-      hideControls(s);
+      const k = raw.toLowerCase();
+      if (s.controlsIndex === 0) {
+        rebindShootKey(k);
+        // Update label
+        if (s.controlsItems[0] && s.controlsItems[0].setText) s.controlsItems[0].setText('Normal Shoot: ' + currentShootKey.toUpperCase());
+      } else if (s.controlsIndex === 1) {
+        rebindRayKey(k);
+        if (s.controlsItems[1] && s.controlsItems[1].setText) s.controlsItems[1].setText('Ray Gun: ' + currentRayKey.toUpperCase());
+      }
+      return;
     }
   });
 }
@@ -383,9 +414,10 @@ function hideControls(s) {
 
 function rebindShootKey(newKey) {
   const k = (newKey || '').toLowerCase();
-  // Only single letter a-z and not reserved
+  // Only single letter a-z and not reserved or conflicting
   if (!/^[a-z]$/.test(k)) return;
-  if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'i') return;
+  if (k === 'w' || k === 'a' || k === 's' || k === 'd') return;
+  if (k === currentRayKey) return;
   // Remove previous mapping for P1A
   if (currentShootKey && KEYBOARD_TO_ARCADE[currentShootKey] === 'P1A') {
     delete KEYBOARD_TO_ARCADE[currentShootKey];
@@ -393,6 +425,21 @@ function rebindShootKey(newKey) {
   currentShootKey = k;
   ARCADE_CONTROLS['P1A'] = [k];
   KEYBOARD_TO_ARCADE[k] = 'P1A';
+}
+
+function rebindRayKey(newKey) {
+  const k = (newKey || '').toLowerCase();
+  // Only single letter a-z and not reserved or conflicting
+  if (!/^[a-z]$/.test(k)) return;
+  if (k === 'w' || k === 'a' || k === 's' || k === 'd') return;
+  if (k === currentShootKey) return;
+  // Remove previous mapping for P1B
+  if (currentRayKey && KEYBOARD_TO_ARCADE[currentRayKey] === 'P1B') {
+    delete KEYBOARD_TO_ARCADE[currentRayKey];
+  }
+  currentRayKey = k;
+  ARCADE_CONTROLS['P1B'] = [k];
+  KEYBOARD_TO_ARCADE[k] = 'P1B';
 }
 
 const config = {
