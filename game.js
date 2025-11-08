@@ -440,11 +440,28 @@ let comboCount = 0;
 let comboMultiplier = 1;
 let comboText;
 
+// Charge Shot state
+let isCharging = false;
+let chargeStartTime = 0;
+let chargeVisuals = null;       // grupo para visuales de canalización
+let chargeToneInterval = null;  // intervalo de audio
+let slowMoTween = null;         // tween de time scale
+
 // ===== Jumper balance constants =====
 const JUMPER_SPAWN_CHANCE = 0.15;          // 15% por enemigo spawneado
 const JUMPER_COOLDOWN_MIN_MS = 1200;       // ms
 const JUMPER_COOLDOWN_MAX_MS = 2000;       // ms
 const JUMPER_JUMP_VEL_Y = -250;            // salto vertical (negativo = hacia arriba)
+
+// ===== Ray Gun (Charge Shot) constants =====
+const CHARGE_THRESHOLD_MS = 1000;          // ⚠️ MODIFICA ESTO: tiempo en ms para activar Ray Gun (1 segundo por defecto)
+const CHARGE_COST_AMMO = 2;                // munición requerida
+const CHARGE_PIERCE_COUNT = 2;             // enemigos que atraviesa el rayo
+const CHARGE_SLOWMO_SCALE = 3.33;          // ⚠️ escala de tiempo durante carga (3.33 = ~30% velocidad, valores MAYORES = más lento)
+const CHARGE_RAY_MAX_DISTANCE = 2000;      // ⚠️ MODIFICA ESTO: distancia máxima del rayo (px)
+const CHARGE_RAY_VISUAL_DURATION = 200;    // duración visual del rayo (ms)
+const CHARGE_RAMP_IN_MS = 150;             // duración de ramp-in a slow-mo
+const CHARGE_RAMP_OUT_MS = 180;            // duración de ramp-out desde slow-mo
 
 function create() {
   const scene = this;
@@ -455,6 +472,12 @@ function create() {
   // playBackgroundMusic(this);
   // Reset core state on scene start
   if (this.physics && this.physics.world && this.physics.world.isPaused) this.physics.world.resume();
+  
+  // Asegurar que time scale está en 1.0 al inicio
+  if (this.physics && this.physics.world) {
+    this.physics.world.timeScale = 1.0;
+  }
+  
   gameOver = false;
   score = 0;
   maxDepth = 0;
@@ -463,9 +486,18 @@ function create() {
   keysState.left = keysState.right = false;
   hazardOn = true;
   hazardTimer = 0;
-  // Reset combo
+  
+  // Reset charge shot state
+  isCharging = false;
+  chargeStartTime = 0;
+  chargeVisuals = null;
+  chargeToneInterval = null;
+  slowMoTween = null;
+  
+  // Reset combo state
   comboCount = 0;
   comboMultiplier = 1;
+  
   // Clear runtime arrays
   platforms = [];
   bullets = [];
@@ -613,8 +645,13 @@ function create() {
       player.body.setVelocityY(-jump);
       playTone(scene, 523, 0.05);
     }
-    if (key === 'P1A' && !player.body.blocked.down && ammo > 0) {
+    // P1A: disparo normal en aire (si no está cargando)
+    if (key === 'P1A' && !player.body.blocked.down && ammo > 0 && !isCharging) {
       fireBullet(scene);
+    }
+    // P1B: iniciar Charge Shot si está en el aire
+    if (key === 'P1B' && !player.body.blocked.down && ammo > 1 && !isCharging) {
+      startCharging(scene);
     }
   });
 
@@ -622,6 +659,22 @@ function create() {
     const key = KEYBOARD_TO_ARCADE[event.key] || event.key;
     if (key === 'P1L') keysState.left = false;
     if (key === 'P1R') keysState.right = false;
+    
+    // P1B release: disparar Charge Shot o cancelar carga
+    if (key === 'P1B' && isCharging) {
+      const heldTime = scene.time.now - chargeStartTime;
+      const isAirborne = !player.body.blocked.down;
+      
+      if (heldTime >= CHARGE_THRESHOLD_MS && ammo >= CHARGE_COST_AMMO && isAirborne) {
+        // IMPORTANTE: Primero restaurar timeScale a 1.0, LUEGO disparar
+        // De lo contrario, la bala se crea con velocidad afectada por slow-mo
+        stopCharging(scene, true); // fired = true
+        fireChargedBullet(scene); // Ahora disparar con timeScale normal
+      } else {
+        // Cancelar carga sin disparar
+        stopCharging(scene, false);
+      }
+    }
   });
 
   // Toggle hurtbox/hitbox debug with P
@@ -647,7 +700,51 @@ function update(_time, _delta) {
     let vx = 0;
     if (keysState.left) vx -= speed;
     if (keysState.right) vx += speed;
+    
+    // Durante slow-mo, compensar velocidad X del jugador para mantenerla normal
+    const timeScale = this.physics.world.timeScale || 1.0;
+    
+    if (isCharging && timeScale > 1.0) {
+      // Como timeScale es un divisor, multiplicamos vx por el timeScale para compensar
+      vx = vx * timeScale;
+    }
+    
     player.body.setVelocityX(vx);
+    
+    // Cancelar carga si el jugador toca el suelo
+    if (isCharging && player.body.blocked.down) {
+      stopCharging(this, false);
+    }
+    
+    // Dibujar anillos de canalización alrededor del jugador
+    if (isCharging && chargeVisuals) {
+      chargeVisuals.clear();
+      const progress = Math.min((this.time.now - chargeStartTime) / CHARGE_THRESHOLD_MS, 1.0);
+      
+      // Anillos concéntricos amarillos que crecen con el progreso
+      for (let i = 0; i < 3; i++) {
+        const radius = 20 + (i * 12) + (progress * 10);
+        const alpha = 0.6 - (i * 0.15);
+        chargeVisuals.lineStyle(2, 0xEEF527, alpha); // Amarillo brillante
+        chargeVisuals.strokeCircle(player.x, player.y, radius);
+      }
+      
+      // Barra de progreso simple sobre el jugador
+      if (progress < 1.0) {
+        const barWidth = 30;
+        const barHeight = 4;
+        const barX = player.x - barWidth / 2;
+        const barY = player.y - 20;
+        
+        // Fondo
+        chargeVisuals.fillStyle(0x000000, 0.6);
+        chargeVisuals.fillRect(barX, barY, barWidth, barHeight);
+        
+        // Progreso amarillo
+        chargeVisuals.fillStyle(0xEEF527, 0.9);
+        chargeVisuals.fillRect(barX, barY, barWidth * progress, barHeight);
+      }
+    }
 
     // Land detection to reset ammo and combo
     const onGround = player.body.blocked.down;
@@ -752,6 +849,17 @@ function update(_time, _delta) {
 function endGame(scene) {
   gameOver = true;
   playTone(scene, 220, 0.5);
+  
+  // Limpiar estado de carga si estaba activo
+  if (isCharging) {
+    stopCharging(scene, false);
+  }
+  
+  // Restaurar time scale a normal
+  if (scene.physics && scene.physics.world) {
+    scene.physics.world.timeScale = 1.0;
+  }
+  
   // Completely stop gameplay
   if (scene.physics && scene.physics.world) scene.physics.world.pause();
   if (scene.cameras && scene.cameras.main) scene.cameras.main.stopFollow();
@@ -894,8 +1002,30 @@ function restartGame(scene) {
   ammo = maxAmmo;
   wasOnGround = false;
   keysState.left = keysState.right = false;
+  
+  // Reset combo state
+  comboCount = 0;
+  comboMultiplier = 1;
+  
+  // Reset charge shot state
+  isCharging = false;
+  chargeStartTime = 0;
+  if (chargeVisuals) {
+    chargeVisuals.destroy();
+    chargeVisuals = null;
+  }
+  if (chargeToneInterval) {
+    clearInterval(chargeToneInterval);
+    chargeToneInterval = null;
+  }
+  if (slowMoTween) {
+    slowMoTween.stop();
+    slowMoTween = null;
+  }
+  
   // Clear globals to force re-creation on next create()
   scoreText = null;
+  comboText = null;
   platforms = [];
   bullets = [];
   scene.scene.restart();
@@ -1120,7 +1250,18 @@ function updateEnemies(scene, deltaMs) {
 }
 
 function onBulletHitsEnemy(scene, bullet, enemy) {
-  if (bullet && bullet.destroy) bullet.destroy();
+  // Manejar balas con pierce (charged bullets)
+  if (bullet && bullet.isCharged && bullet.pierceCount > 0) {
+    bullet.pierceCount--;
+    // Solo destruir si pierceCount agotado
+    if (bullet.pierceCount <= 0 && bullet.destroy) {
+      bullet.destroy();
+    }
+  } else {
+    // Balas normales se destruyen inmediatamente
+    if (bullet && bullet.destroy) bullet.destroy();
+  }
+  
   if (enemy && enemy.active) {
     // Particle burst effect on enemy death
     for (let i = 0; i < 8; i++) {
@@ -1286,6 +1427,232 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
     if (scoreText) scoreText.setText('Score: ' + score);
     enemy.destroy();
   }
+}
+
+// ===== Charge Shot helpers =====
+function startCharging(scene) {
+  if (isCharging) return; // ya está cargando
+  
+  isCharging = true;
+  chargeStartTime = scene.time.now;
+  
+  // Aplicar slow-motion inmediatamente
+  // NOTA: En Phaser, timeScale funciona como DIVISOR del delta time
+  // Valores MAYORES a 1.0 = más lento (ej: 3.33 ≈ 30% velocidad)
+  // Valores MENORES a 1.0 = más rápido
+  if (scene.physics && scene.physics.world) {
+    scene.physics.world.timeScale = CHARGE_SLOWMO_SCALE;
+  }
+  
+  // Guardar referencia al tween para cleanup (aunque ya no lo usamos para el ramp)
+  slowMoTween = null;
+  
+  // Visuales de canalización: anillos amarillos pulsantes alrededor del jugador (Ray Gun)
+  if (!chargeVisuals) {
+    chargeVisuals = scene.add.graphics();
+    chargeVisuals.setDepth(999);
+    chargeVisuals.setScrollFactor(1);
+  }
+  
+  // Animación de anillos
+  scene.tweens.add({
+    targets: chargeVisuals,
+    alpha: { from: 0.8, to: 0.3 },
+    duration: 400,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+  
+  // Audio feedback: tono continuo modulado
+  let frequency = 440;
+  const freqStep = 10;
+  chargeToneInterval = setInterval(() => {
+    if (isCharging) {
+      playTone(scene, frequency, 0.08);
+      frequency += freqStep;
+      if (frequency > 600) frequency = 440;
+    }
+  }, 150);
+}
+
+function stopCharging(scene, fired = false) {
+  if (!isCharging) return;
+  
+  isCharging = false;
+  
+  // Restaurar velocidad normal inmediatamente
+  if (scene.physics && scene.physics.world) {
+    scene.physics.world.timeScale = 1.0;
+  }
+  slowMoTween = null;
+  
+  // Limpiar visuales
+  if (chargeVisuals) {
+    scene.tweens.killTweensOf(chargeVisuals);
+    chargeVisuals.clear();
+    chargeVisuals.destroy();
+    chargeVisuals = null;
+  }
+  
+  // Detener audio
+  if (chargeToneInterval) {
+    clearInterval(chargeToneInterval);
+    chargeToneInterval = null;
+  }
+  
+  // Si se disparó, mostrar efectos de liberación
+  if (fired) {
+    // Flash ring amarillo desde el jugador (Ray Gun)
+    const ring = scene.add.circle(player.x, player.y, 10, 0xEEF527, 0.7);
+    ring.setDepth(1000);
+    scene.tweens.add({
+      targets: ring,
+      scale: 4,
+      alpha: 0,
+      duration: 250,
+      ease: 'Quad.easeOut',
+      onComplete: () => ring.destroy()
+    });
+    
+    // Partículas amarillas
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const particle = scene.add.rectangle(player.x, player.y, 4, 4, 0xEEF527);
+      particle.setDepth(1000);
+      scene.physics.add.existing(particle);
+      particle.body.setVelocity(
+        Math.cos(angle) * 200,
+        Math.sin(angle) * 200
+      );
+      particle.body.setGravity(0, 0);
+      scene.tweens.add({
+        targets: particle,
+        alpha: 0,
+        scale: 0,
+        duration: 300,
+        onComplete: () => particle.destroy()
+      });
+    }
+    
+    // Camera shake más intenso para Ray Gun
+    scene.cameras.main.shake(150, 0.006);
+    
+    // Audio: tono de liberación (pitch alto)
+    playTone(scene, 1000, 0.12);
+  }
+}
+
+function fireChargedBullet(scene) {
+  // ===== RAY GUN: Rayo instantáneo hacia abajo =====
+  const rayColor = 0xEEF527;      // Amarillo brillante
+  const rayStart = { x: player.x, y: player.y + 12 };
+  const rayEnd = { x: player.x, y: player.y + CHARGE_RAY_MAX_DISTANCE };
+  
+  console.log('🔫 RAY GUN DISPARADO desde:', rayStart.y, 'hasta:', rayEnd.y);
+  
+  // Dibujar el rayo visual
+  const rayGraphics = scene.add.graphics();
+  rayGraphics.setDepth(1500);
+  
+  // Rayo grueso con glow
+  rayGraphics.lineStyle(8, rayColor, 0.3);
+  rayGraphics.lineBetween(rayStart.x, rayStart.y, rayEnd.x, rayEnd.y);
+  rayGraphics.lineStyle(4, rayColor, 0.7);
+  rayGraphics.lineBetween(rayStart.x, rayStart.y, rayEnd.x, rayEnd.y);
+  rayGraphics.lineStyle(2, 0xFFFFFF, 1.0);
+  rayGraphics.lineBetween(rayStart.x, rayStart.y, rayEnd.x, rayEnd.y);
+  
+  // El rayo se desvanece después de un tiempo
+  scene.tweens.add({
+    targets: rayGraphics,
+    alpha: 0,
+    duration: CHARGE_RAY_VISUAL_DURATION,
+    ease: 'Quad.easeOut',
+    onComplete: () => rayGraphics.destroy()
+  });
+  
+  // Detectar todos los enemigos que están en el camino del rayo
+  const hitEnemies = [];
+  if (enemiesGroup && enemiesGroup.children) {
+    enemiesGroup.children.entries.forEach(enemy => {
+      if (!enemy.active) return;
+      
+      // Verificar si el enemigo está en la línea del rayo (±10px de tolerancia horizontal)
+      const horizontalDist = Math.abs(enemy.x - player.x);
+      if (horizontalDist <= 20) {
+        // Y el enemigo está debajo del jugador
+        if (enemy.y > player.y) {
+          const distanceFromPlayer = enemy.y - player.y;
+          hitEnemies.push({ enemy, distance: distanceFromPlayer });
+        }
+      }
+    });
+  }
+  
+  // Ordenar por distancia (más cercano primero)
+  hitEnemies.sort((a, b) => a.distance - b.distance);
+  
+  // Aplicar daño a los primeros N enemigos (pierce)
+  const maxHits = CHARGE_PIERCE_COUNT;
+  const actualHits = Math.min(hitEnemies.length, maxHits);
+  
+  console.log('Enemigos en camino del rayo:', hitEnemies.length, '/ Hits aplicados:', actualHits);
+  
+  for (let i = 0; i < actualHits; i++) {
+    const { enemy, distance } = hitEnemies[i];
+    
+    // Efecto visual en el punto de impacto
+    const impactFlash = scene.add.circle(enemy.x, enemy.y, 12, rayColor, 0.8);
+    impactFlash.setDepth(1600);
+    scene.tweens.add({
+      targets: impactFlash,
+      scale: 2.5,
+      alpha: 0,
+      duration: 250,
+      ease: 'Power2',
+      onComplete: () => impactFlash.destroy()
+    });
+    
+    // Partículas en el impacto
+    for (let j = 0; j < 6; j++) {
+      const angle = (j / 6) * Math.PI * 2;
+      const p = scene.add.rectangle(enemy.x, enemy.y, 3, 3, rayColor);
+      p.setDepth(1600);
+      scene.physics.add.existing(p);
+      p.body.setVelocity(
+        Math.cos(angle) * 150,
+        Math.sin(angle) * 150
+      );
+      p.body.setGravity(0, 0);
+      scene.tweens.add({
+        targets: p,
+        alpha: 0,
+        scale: 0,
+        duration: 300,
+        onComplete: () => p.destroy()
+      });
+    }
+    
+    // Matar al enemigo (reutilizar lógica existente)
+    onBulletHitsEnemy(scene, { isCharged: true, pierceCount: 999 }, enemy);
+  }
+  
+  // Consumir munición
+  ammo -= CHARGE_COST_AMMO;
+  if (scene.ammoText) {
+    scene.ammoText.setText('Ammo: ' + ammo);
+    scene.ammoText.setColor(comboCount > 0 ? '#00ffff' : '#ffff00');
+  }
+  
+  // Recoil suave
+  if (player && player.body) {
+    const recoilY = recoil * 0.5;
+    player.body.setVelocityY(Math.min(player.body.velocity.y - recoilY, -recoilY));
+  }
+  
+  // Sonido más potente para el ray gun
+  playTone(scene, 1200, 0.15);
 }
 
 // ===== Debug helpers =====
