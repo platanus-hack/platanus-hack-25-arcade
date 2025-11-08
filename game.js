@@ -1,646 +1,517 @@
-// Herdshift: Quantum Corral — Phaser 3 • Cyber-corral Tetris con joystick (L/R/D) y botones A (rotar) / B (hard drop) / START (pausa-reinicio).
+// Infinity Rooms — juego arcade procedural para el desafío Platanus Hack 25
 
-const ARCADE_CONTROLS={
-  P1L:['A','ArrowLeft'],
-  P1R:['D','ArrowRight'],
-  P1U:['W','ArrowUp'],
-  P1D:['S','ArrowDown'],
-  P1DL:['Q'],
-  P1DR:['E'],
-  P1A:['U','Z'],
-  P1B:['I','Space'],
-  P1C:['O'],
-  P1X:['J'],
-  P1Y:['K'],
-  P1Z:['L'],
-  START1:['Enter'],
-  P2L:['J','Numpad4'],
-  P2R:['L','Numpad6'],
-  P2U:['I','Numpad8'],
-  P2D:['K','Numpad5'],
-  P2DL:['Numpad1'],
-  P2DR:['Numpad3'],
-  P2A:['R'],
-  P2B:['T'],
-  P2C:['Y'],
-  P2X:['F'],
-  P2Y:['G'],
-  P2Z:['H'],
-  START2:['Shift']
+const VIEW_W = 800;
+const VIEW_H = 600;
+const TILE = 40;
+const ROOM_COLS = 16;
+const ROOM_ROWS = 12;
+const ROOM_W = ROOM_COLS * TILE;
+const ROOM_H = ROOM_ROWS * TILE;
+const ROOM_X = (VIEW_W - ROOM_W) / 2;
+const ROOM_Y = (VIEW_H - ROOM_H) / 2;
+const ENTRY_ENERGY = 100;
+
+const config = {
+  type: Phaser.AUTO,
+  width: VIEW_W,
+  height: VIEW_H,
+  backgroundColor: '#0b0f1a',
+  scene: { preload, create, update }
 };
 
-const GRID_W=10,GRID_H=20;
-const DROP_MS_START=720,SOFT_MS=40,LEVEL_ACCEL=65,MIN_DROP=120;
+const game = new Phaser.Game(config);
 
-const SPECIES=[
-  {id:0,name:'cow',body:0x8d5935,glow:0xffc280,accent:0x32170a},
-  {id:1,name:'sheep',body:0xdfe8f8,glow:0xffffd6,accent:0x58636c},
-  {id:2,name:'horse',body:0x513120,glow:0xff9bff,accent:0x14080a}
-];
+function preload() {}
 
-const SHAPES=[
-  [[[0,1],[1,1],[2,1],[3,1]],[[2,0],[2,1],[2,2],[2,3]],[[0,2],[1,2],[2,2],[3,2]],[[1,0],[1,1],[1,2],[1,3]]],
-  [[[0,0],[1,0],[0,1],[1,1]],[[0,0],[1,0],[0,1],[1,1]],[[0,0],[1,0],[0,1],[1,1]],[[0,0],[1,0],[0,1],[1,1]]],
-  [[[1,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[1,2],[2,1]],[[0,1],[1,1],[2,1],[1,2]],[[0,1],[1,0],[1,1],[1,2]]],
-  [[[0,0],[0,1],[1,1],[2,1]],[[1,0],[2,0],[1,1],[1,2]],[[0,1],[1,1],[2,1],[2,2]],[[1,0],[1,1],[0,2],[1,2]]],
-  [[[2,0],[0,1],[1,1],[2,1]],[[1,0],[1,1],[1,2],[2,0]],[[0,1],[1,1],[2,1],[0,2]],[[0,0],[1,0],[1,1],[1,2]]],
-  [[[1,0],[2,0],[0,1],[1,1]],[[1,0],[1,1],[2,1],[2,2]],[[1,1],[2,1],[0,2],[1,2]],[[0,0],[0,1],[1,1],[1,2]]],
-  [[[0,0],[1,0],[1,1],[2,1]],[[2,0],[1,1],[2,1],[1,2]],[[0,1],[1,1],[1,2],[2,2]],[[1,0],[0,1],[1,1],[0,2]]]
-];
-
-const SCORE_TABLE=[0,100,320,520,840];
-
-const game=new Phaser.Game({
-  type:Phaser.CANVAS,
-  width:960,
-  height:600,
-  pixelArt:true,
-  backgroundColor:'#04000a',
-  scale:{
-    mode:Phaser.Scale.RESIZE,
-    autoCenter:Phaser.Scale.CENTER_BOTH
-  },
-  scene:{preload,create,update}
-});
-
-function preload(){}
-
-function create(){
-  const s=this;
-  s.board=new Array(GRID_W*GRID_H).fill(-1);
-  s.flash=[];
-  s.keys=bindKeys(s);
-  s.drop=DROP_MS_START;
-  s.acc=0;
-  s.sideDelay=0;
-  s.score=0;
-  s.lines=0;
-  s.level=1;
-  s.gameOver=false;
-  s.paused=false;
-  s.tipTimer=9000;
-  s.bonusText=null;
-  s.osc=s.sound.context;
-  buildBackground(s);
-  buildPanels(s);
-  applyLayout(s);
-  s.scale.on('resize',()=>applyLayout(s));
-  s.previewShape=null;
-  s.nextPiece=makePiece();
-  spawnPiece(s);
-}
-
-function update(_,dt){
-  const s=this;
-  animateBackground(s,dt);
-  if(justPressed(s,'START1')){
-    if(s.gameOver){ resetGame(s); return; }
-    s.paused=!s.paused;
-    setMessage(s,s.paused?'PAUSA\nSTART PARA CONTINUAR':'',s.paused);
-    beep(s,230,0.05);
-  }
-  if(s.gameOver||s.paused){
-    drawScene(s);
-    return;
-  }
-  if(s.tipTimer>0){
-    s.tipTimer-=dt;
-    if(s.tipTimer<=0) s.tip.setVisible(false);
-  }
-  if(justPressed(s,'P1A')) rotatePiece(s);
-  if(justPressed(s,'P1B')) hardDrop(s);
-  if(justPressed(s,'P1D')) tryMove(s,0,1);
-  handleSideways(s,dt);
-  s.acc+=dt;
-  const step=isHeld(s,'P1D')?SOFT_MS:s.drop;
-  if(s.acc>=step){
-    s.acc-=step;
-    if(!tryMove(s,0,1)) lockPiece(s);
-  }
-  if(s.bonusText){
-    s.bonusText.alpha-=dt*0.0025;
-    s.bonusText.y-=dt*0.03;
-    if(s.bonusText.alpha<=0) { s.bonusText.destroy(); s.bonusText=null; }
-  }
-  drawScene(s);
-}
-
-function buildBackground(s){
-  s.bg=s.add.graphics().setDepth(0);
-  s.holo=s.add.graphics().setDepth(1).setBlendMode(Phaser.BlendModes.ADD);
-  s.gGrid=s.add.graphics().setDepth(2);
-  s.boardLayer=s.add.graphics().setDepth(3);
-  s.overlay=s.add.graphics().setDepth(4);
-  s.frame=s.add.graphics().setDepth(5);
-  s.scanlines=s.add.graphics().setDepth(10).setBlendMode(Phaser.BlendModes.MULTIPLY);
-  s.vignette=s.add.graphics().setDepth(11);
-}
-
-function buildPanels(s){
-  s.hudTitle=s.add.text(0,0,'HERDSHIFT',{
-    fontFamily:'monospace',
-    fontSize:26,
-    color:'#85f6ff'
+function create() {
+  this.cameras.main.setRoundPixels(true);
+  this.layers = {
+    floor: this.add.graphics(),
+    entities: this.add.graphics()
+  };
+  this.banner = this.add.text(VIEW_W / 2, 36, '', {
+    fontFamily: 'monospace',
+    fontSize: 22,
+    color: '#9cfaff',
+    align: 'center'
+  }).setOrigin(0.5).setAlpha(0);
+  this.hud = this.add.text(24, VIEW_H - 120, '', {
+    fontFamily: 'monospace',
+    fontSize: 18,
+    color: '#f4f9ff',
+    lineSpacing: 8
   });
-  s.hudText=s.add.text(0,0,'',{
-    fontFamily:'monospace',
-    fontSize:18,
-    lineSpacing:8,
-    color:'#f8ecff'
-  });
-  s.tip=s.add.text(0,0,'A = ROTAR\nB = DROP\nJOYSTICK PARA MOVER\n\n🐄 VACA: ASIENTA FILAS\n🐑 OVEJA: x1.5 SI 8\n🐎 CABALLO: MICRO-SALTO',{
-    fontFamily:'monospace',
-    fontSize:16,
-    color:'#d6fffa'
-  });
-  s.tip.setWordWrapWidth(210);
-  s.nextLabel=s.add.text(0,0,'PRÓXIMA MANADA',{
-    fontFamily:'monospace',
-    fontSize:18,
-    color:'#8ef7ff'
-  });
-  s.nextPreview=s.add.graphics().setDepth(6);
-  s.nextName=s.add.text(0,0,'',{
-    fontFamily:'monospace',
-    fontSize:16,
-    color:'#ffe4ff'
-  }).setWordWrapWidth(200);
-  s.msg=s.add.text(0,0,'',{
-    fontFamily:'monospace',
-    fontSize:32,
-    align:'center',
-    color:'#fef9ff',
-    stroke:'#ff3dfd',
-    strokeThickness:4
-  }).setOrigin(0.5).setDepth(8).setVisible(false);
+  this.tip = this.add.text(VIEW_W - 260, VIEW_H - 140, '', {
+    fontFamily: 'monospace',
+    fontSize: 16,
+    color: '#d5faff',
+    align: 'right',
+    wordWrap: { width: 220 }
+  }).setOrigin(1, 1);
+
+  this.timeScale = 1;
+  this.controls = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,ENTER');
+
+  this.state = {
+    seed: Date.now() % 100000,
+    index: 0,
+    difficulty: 1,
+    roomsCleared: 0,
+    orbsTaken: 0,
+    hitsTaken: 0,
+    bestStreak: 0,
+    currentStreak: 0
+  };
+
+  this.player = {
+    x: ROOM_X + ROOM_W / 2,
+    y: ROOM_Y + ROOM_H / 2,
+    size: TILE * 0.55,
+    speed: 180,
+    energy: ENTRY_ENERGY,
+    hitCooldown: 0
+  };
+
+  this.room = null;
+  this.bannerTimer = 0;
+  createGradientFloor(this.layers.floor);
+
+  startRoom(this, null);
+  updateHUD(this);
+  updateTip(this);
 }
 
-function applyLayout(s){
-  const W=s.scale.gameSize.width;
-  const H=s.scale.gameSize.height;
-  const PAD=Math.floor(Math.min(W,H)*0.03);
-  const cell=Math.max(6,Math.floor(Math.min((W-2*PAD)/GRID_W,(H-2*PAD)/GRID_H)));
-  s.CELL=cell;
-  s.BW=cell*GRID_W;
-  s.BH=cell*GRID_H;
-  s.BX=Math.floor((W-s.BW)/2);
-  s.BY=Math.floor((H-s.BH)/2);
-  s.previewCell=Math.max(6,Math.floor(cell*0.6));
-  s.cameras.main.setRoundPixels(true);
+function update(_, delta) {
+  const dt = (delta / 1000) * this.timeScale;
+  if (!this.room) return;
 
-  // background fills
-  s.bg.clear();
-  s.bg.fillStyle(0x050014,1);
-  s.bg.fillRect(0,0,W,H);
-  const strip=Math.max(12,Math.floor(cell*0.6));
-  for(let i=0;i<18;i++){
-    const alpha=0.28-i*0.01;
-    s.bg.fillStyle(0x2b0a3f,alpha);
-    s.bg.fillRect(0,H-(i+1)*strip,W,strip);
-  }
-
-  // overlay + frame
-  const boardPad=Math.max(4,Math.floor(cell*0.4));
-  s.overlay.clear();
-  s.overlay.fillStyle(0x120030,0.25);
-  s.overlay.fillRect(s.BX-boardPad,s.BY-boardPad,s.BW+boardPad*2,s.BH+boardPad*2);
-
-  s.frame.clear();
-  const border=Math.max(6,Math.floor(cell*0.7));
-  s.frame.lineStyle(Math.max(2,Math.floor(cell*0.18)),0x8225ff,0.6);
-  s.frame.strokeRect(s.BX-border,s.BY-border,s.BW+border*2,s.BH+border*2);
-  s.frame.lineStyle(Math.max(1,Math.floor(cell*0.12)),0x0af1ff,0.4);
-  const sideW=Math.max(cell*6.5,180);
-  const sideH=s.BH+Math.max(cell*1.5,80);
-  const leftX=s.BX-Math.max(cell*6.2,200);
-  const sideY=s.BY-Math.max(cell*0.8,cell);
-  const rightX=s.BX+s.BW+Math.max(cell*0.8,24);
-  s.frame.strokeRect(leftX,sideY,sideW,sideH);
-  s.frame.strokeRect(rightX,sideY,sideW,sideH);
-
-  // HUD positions
-  const hudSize=Math.max(14,Math.floor(cell*0.9));
-  s.hudTitle.setFontSize(hudSize).setPosition(leftX+Math.max(cell*0.4,6),s.BY);
-  s.hudText.setFontSize(Math.max(10,Math.floor(cell*0.65))).setPosition(leftX+Math.max(cell*0.4,6),s.BY+Math.max(cell*1.2,30));
-  s.tip.setFontSize(Math.max(10,Math.floor(cell*0.55)));
-  s.tip.setWordWrapWidth(Math.max(cell*6,160));
-  s.tip.setPosition(leftX+Math.max(cell*0.4,6),s.BY+Math.max(cell*4,120));
-
-  const rightBase=rightX+Math.max(cell*0.6,10);
-  s.nextLabel.setFontSize(Math.max(10,Math.floor(cell*0.6))).setPosition(rightBase,s.BY);
-  s.nextPreview.setPosition(rightBase+Math.max(cell*2.4,60),s.BY+Math.max(cell*3,90));
-  s.nextName.setFontSize(Math.max(10,Math.floor(cell*0.55))).setPosition(rightBase,s.BY+Math.max(cell*5.6,170)).setWordWrapWidth(Math.max(cell*6,160));
-
-  s.msg.setFontSize(Math.max(18,Math.floor(cell*1.1))).setPosition(s.BX+s.BW/2,s.BY+s.BH/2);
-  if(s.bonusText){
-    s.bonusText.setFontSize(Math.max(14,Math.floor(cell*0.85)));
-    s.bonusText.setPosition(s.BX+s.BW/2,s.BY+Math.max(cell*3,100));
-  }
-
-  // scanlines + vignette
-  drawScanlines(s);
-  drawVignette(s);
-
-  if(s.nextPiece) updatePreview(s);
+  handleInput(this, dt);
+  updateHazards(this, dt);
+  updateOrbs(this);
+  renderEntities(this);
+  updateHUD(this);
+  updateBanner(this, dt);
 }
 
-function animateBackground(s,dt){
-  const holo=s.holo;
-  holo.clear();
-  const t=s.time.now*0.0004;
-  for(let i=0;i<6;i++){
-    const radius=90+i*60;
-    holo.lineStyle(1.5,0x30a3ff,0.2-i*0.02);
-    const cx=s.BX+s.BW/2, cy=s.BY+s.BH*0.65;
-    holo.strokeCircle(cx,cy,radius+(Math.sin(t+i)*8));
+function handleInput(scene, dt) {
+  const speed = scene.player.speed;
+  const dx = (isDown(scene, 'D') || isDown(scene, 'RIGHT') ? 1 : 0) - (isDown(scene, 'A') || isDown(scene, 'LEFT') ? 1 : 0);
+  const dy = (isDown(scene, 'S') || isDown(scene, 'DOWN') ? 1 : 0) - (isDown(scene, 'W') || isDown(scene, 'UP') ? 1 : 0);
+  let vx = dx;
+  let vy = dy;
+  if (vx && vy) {
+    const inv = 1 / Math.sqrt(2);
+    vx *= inv;
+    vy *= inv;
   }
-  const g=s.gGrid;
+  if (vx || vy) {
+    const nextX = scene.player.x + vx * speed * dt;
+    const nextY = scene.player.y + vy * speed * dt;
+    if (!blocked(scene, nextX, scene.player.y)) scene.player.x = Phaser.Math.Clamp(nextX, ROOM_X + TILE * 0.5, ROOM_X + ROOM_W - TILE * 0.5);
+    if (!blocked(scene, scene.player.x, nextY)) scene.player.y = Phaser.Math.Clamp(nextY, ROOM_Y + TILE * 0.5, ROOM_Y + ROOM_H - TILE * 0.5);
+  }
+  scene.player.hitCooldown = Math.max(0, scene.player.hitCooldown - dt);
+
+  const door = detectDoor(scene);
+  if (door && scene.room.orbs.length === 0) {
+    advanceRoom(scene, door);
+  } else if (door && scene.room.orbs.length > 0) {
+    showBanner(scene, 'Recolecta todos los destellos para desbloquear la cámara siguiente');
+  }
+}
+
+function blocked(scene, worldX, worldY) {
+  const col = Math.floor((worldX - ROOM_X) / TILE);
+  const row = Math.floor((worldY - ROOM_Y) / TILE);
+  const grid = scene.room.grid;
+  if (col < 0 || row < 0 || col >= ROOM_COLS || row >= ROOM_ROWS) return true;
+  return grid[row][col] === 1;
+}
+
+function updateHazards(scene, dt) {
+  const hazards = scene.room.hazards;
+  const px = scene.player.x;
+  const py = scene.player.y;
+  for (let i = 0; i < hazards.length; i++) {
+    const hz = hazards[i];
+    hz.timer += dt;
+    while (hz.timer > hz.period) hz.timer -= hz.period;
+    hz.active = hz.timer < hz.activeWindow;
+    if (!hz.active) continue;
+    const cx = ROOM_X + hz.col * TILE + TILE / 2;
+    const cy = ROOM_Y + hz.row * TILE + TILE / 2;
+    const dist = Phaser.Math.Distance.Between(px, py, cx, cy);
+    if (dist < TILE * 0.45 && scene.player.hitCooldown <= 0) {
+      scene.player.energy = Math.max(0, scene.player.energy - 34);
+      scene.player.hitCooldown = 0.9;
+      scene.state.hitsTaken++;
+      scene.state.currentStreak = 0;
+      showBanner(scene, 'Impacto de dron. Reajusta tu ritmo.');
+      if (scene.player.energy === 0) {
+        resetEnergy(scene);
+      }
+    }
+  }
+}
+
+function updateOrbs(scene) {
+  const orbs = scene.room.orbs;
+  if (!orbs.length) return;
+  const px = scene.player.x;
+  const py = scene.player.y;
+  for (let i = orbs.length - 1; i >= 0; i--) {
+    const orb = orbs[i];
+    const cx = ROOM_X + orb.col * TILE + TILE / 2;
+    const cy = ROOM_Y + orb.row * TILE + TILE / 2;
+    if (Phaser.Math.Distance.Between(px, py, cx, cy) < TILE * 0.4) {
+      orbs.splice(i, 1);
+      scene.state.orbsTaken++;
+      scene.player.energy = Math.min(ENTRY_ENERGY, scene.player.energy + 12);
+      scene.state.currentStreak++;
+      scene.state.bestStreak = Math.max(scene.state.bestStreak, scene.state.currentStreak);
+      if (orbs.length === 0) {
+        showBanner(scene, 'Puertas liberadas. Explora la siguiente cámara.');
+      } else {
+        showBanner(scene, `${orbs.length} destellos por capturar`);
+      }
+    }
+  }
+}
+
+function renderEntities(scene) {
+  const g = scene.layers.entities;
   g.clear();
-  const W=s.scale.gameSize.width,H=s.scale.gameSize.height;
-  const baseY=s.BY+s.BH*0.55;
-  g.lineStyle(1,0x0d3661,0.45);
-  for(let x=-8;x<=8;x++){
-    const sx=s.BX+s.BW/2+x*s.CELL*1.4;
-    g.lineBetween(sx,baseY,sx+x*s.CELL*0.9,H);
+  drawDoors(scene, g);
+  drawHazards(scene, g);
+  drawOrbs(scene, g);
+  drawPlayer(scene, g);
+}
+
+function drawPlayer(scene, g) {
+  const size = scene.player.size;
+  g.fillStyle(0x4ff4ff, 0.9);
+  g.fillRoundedRect(scene.player.x - size / 2, scene.player.y - size / 2, size, size, size * 0.28);
+  g.lineStyle(2, 0xffffff, 0.5);
+  g.strokeRoundedRect(scene.player.x - size / 2, scene.player.y - size / 2, size, size, size * 0.28);
+  const pulse = 0.3 + 0.2 * Math.sin(scene.time.now * 0.005);
+  g.fillStyle(0x9effff, pulse);
+  g.fillCircle(scene.player.x, scene.player.y, size * 0.58);
+}
+
+function drawOrbs(scene, g) {
+  const orbs = scene.room.orbs;
+  for (let i = 0; i < orbs.length; i++) {
+    const orb = orbs[i];
+    const cx = ROOM_X + orb.col * TILE + TILE / 2;
+    const cy = ROOM_Y + orb.row * TILE + TILE / 2;
+    const glow = 0.2 + 0.2 * Math.sin((scene.time.now / 200) + i);
+    g.fillStyle(0xffe066, 0.4 + glow);
+    g.fillCircle(cx, cy, TILE * (0.25 + glow));
+    g.fillStyle(0xfff6a8, 1);
+    g.fillCircle(cx, cy, TILE * 0.2);
   }
-  g.lineStyle(1,0x36139a,0.35);
-  for(let i=0;i<18;i++){
-    const y=baseY+i*s.CELL*0.9;
-    g.lineBetween(s.BX-s.CELL*6,y,s.BX+s.BW+s.CELL*6,y+Math.sin(t+i)*10);
+}
+
+function drawHazards(scene, g) {
+  const hazards = scene.room.hazards;
+  for (let i = 0; i < hazards.length; i++) {
+    const hz = hazards[i];
+    const cx = ROOM_X + hz.col * TILE + TILE / 2;
+    const cy = ROOM_Y + hz.row * TILE + TILE / 2;
+    const base = hz.active ? 0xff4d6d : 0x7346ff;
+    g.fillStyle(base, hz.active ? 0.95 : 0.4);
+    g.fillPolygon([
+      cx, cy - TILE * 0.32,
+      cx + TILE * 0.26, cy + TILE * 0.16,
+      cx - TILE * 0.26, cy + TILE * 0.16
+    ]);
+    g.lineStyle(2, 0x111a3b, 0.6);
+    g.strokeCircle(cx, cy, TILE * 0.34);
   }
-  s.overlay.clear();
-  s.overlay.fillStyle(0x120030,0.25);
-  const pad=Math.max(4,Math.floor(s.CELL*0.4));
-  s.overlay.fillRect(s.BX-pad,s.BY-pad,s.BW+pad*2,s.BH+pad*2);
 }
 
-function bindKeys(scene){
-  const map={};
-  for(const code in ARCADE_CONTROLS){
-    map[code]=ARCADE_CONTROLS[code].map(k=>scene.input.keyboard.addKey(k));
+function drawDoors(scene, g) {
+  const doors = scene.room.doors;
+  for (let i = 0; i < doors.length; i++) {
+    const door = doors[i];
+    const cx = ROOM_X + door.col * TILE + TILE / 2;
+    const cy = ROOM_Y + door.row * TILE + TILE / 2;
+    const unlocked = scene.room.orbs.length === 0 || door.dir === scene.room.entryDir;
+    const color = unlocked ? 0x41ffb0 : 0x225064;
+    g.lineStyle(4, color, 0.7);
+    g.strokeRect(cx - TILE * 0.35, cy - TILE * 0.35, TILE * 0.7, TILE * 0.7);
+    if (unlocked) {
+      g.fillStyle(color, 0.3);
+      g.fillEllipse(cx, cy, TILE * 0.8, TILE * 0.8);
+    }
   }
-  return map;
 }
 
-function isHeld(scene,code){
-  const keys=scene.keys[code];
-  if(!keys) return false;
-  for(let i=0;i<keys.length;i++) if(keys[i].isDown) return true;
-  return false;
+function updateHUD(scene) {
+  const energy = Math.round(scene.player.energy);
+  const rooms = scene.state.roomsCleared;
+  const difficulty = scene.state.difficulty;
+  const remaining = scene.room ? scene.room.orbs.length : 0;
+  scene.hud.setText(
+    `Salas superadas: ${rooms}\n` +
+    `Energía: ${energy}%\n` +
+    `Destellos restantes: ${remaining}\n` +
+    `Riesgo dinámico: ${difficulty}\n` +
+    `Racha actual: ${scene.state.currentStreak} • Mejor racha: ${scene.state.bestStreak}`
+  );
 }
 
-function justPressed(scene,code){
-  const keys=scene.keys[code];
-  if(!keys) return false;
-  for(let i=0;i<keys.length;i++) if(Phaser.Input.Keyboard.JustDown(keys[i])) return true;
-  return false;
+function updateTip(scene) {
+  scene.tip.setText(
+    'Controles: WASD o flechas para moverte.\n' +
+    'Recolecta todos los destellos para desbloquear las puertas.\n' +
+    'Evita drones de contención; te drenan energía.\n' +
+    'Mantén la racha para subir tu multiplicador invisible.'
+  );
 }
 
-function makePiece(){
+function updateBanner(scene, dt) {
+  if (scene.bannerTimer > 0) {
+    scene.bannerTimer -= dt;
+    scene.banner.setAlpha(Math.min(1, scene.bannerTimer));
+    if (scene.bannerTimer <= 0) {
+      scene.bannerTimer = 0;
+      scene.banner.setAlpha(0);
+    }
+  }
+}
+
+function showBanner(scene, text) {
+  scene.banner.setText(text);
+  scene.banner.setAlpha(1);
+  scene.bannerTimer = 2.5;
+}
+
+function resetEnergy(scene) {
+  scene.player.energy = ENTRY_ENERGY;
+  scene.player.x = ROOM_X + scene.room.entryCol * TILE + TILE / 2;
+  scene.player.y = ROOM_Y + scene.room.entryRow * TILE + TILE / 2;
+  showBanner(scene, 'Energía restaurada. Intenta de nuevo la cámara.');
+}
+
+function detectDoor(scene) {
+  const px = scene.player.x;
+  const py = scene.player.y;
+  const doors = scene.room.doors;
+  for (let i = 0; i < doors.length; i++) {
+    const door = doors[i];
+    const cx = ROOM_X + door.col * TILE + TILE / 2;
+    const cy = ROOM_Y + door.row * TILE + TILE / 2;
+    if (Phaser.Math.Distance.Between(px, py, cx, cy) < TILE * 0.5) {
+      return door;
+    }
+  }
+  return null;
+}
+
+function advanceRoom(scene, door) {
+  scene.state.roomsCleared++;
+  scene.state.difficulty = Math.min(10, 1 + Math.floor(scene.state.roomsCleared / 2));
+  scene.state.index++;
+  startRoom(scene, door.dir);
+  showBanner(scene, `Sala ${scene.state.roomsCleared}. Dificultad ${scene.state.difficulty}`);
+}
+
+function startRoom(scene, entryDir) {
+  const roomSeed = scene.state.seed + scene.state.index * 9973;
+  scene.room = buildRoom(roomSeed, entryDir, scene.state.difficulty);
+  scene.player.x = ROOM_X + scene.room.entryCol * TILE + TILE / 2;
+  scene.player.y = ROOM_Y + scene.room.entryRow * TILE + TILE / 2;
+  scene.player.energy = Math.min(scene.player.energy, ENTRY_ENERGY);
+  scene.player.hitCooldown = 0;
+  drawRoom(scene);
+  renderEntities(scene);
+}
+
+function drawRoom(scene) {
+  const g = scene.layers.floor;
+  g.clear();
+  g.fillStyle(0x121d34, 0.95);
+  g.fillRect(ROOM_X - 20, ROOM_Y - 20, ROOM_W + 40, ROOM_H + 40);
+  g.lineStyle(4, 0x1f3d5d, 0.8);
+  g.strokeRect(ROOM_X - 20, ROOM_Y - 20, ROOM_W + 40, ROOM_H + 40);
+  for (let r = 0; r < ROOM_ROWS; r++) {
+    for (let c = 0; c < ROOM_COLS; c++) {
+      const tile = scene.room.grid[r][c];
+      const x = ROOM_X + c * TILE;
+      const y = ROOM_Y + r * TILE;
+      const isDark = (r + c) % 2 === 0;
+      g.fillStyle(isDark ? 0x0e1526 : 0x101a2b, 0.9);
+      g.fillRect(x, y, TILE, TILE);
+      if (tile === 1) {
+        g.fillStyle(0x1f3658, 0.85);
+        g.fillRect(x, y, TILE, TILE);
+        g.fillStyle(0x2f4d7d, 0.6);
+        g.fillRect(x + 6, y + 6, TILE - 12, TILE - 12);
+      }
+    }
+  }
+}
+
+function buildRoom(seed, entryDir, difficulty) {
+  const rng = makeRNG(seed);
+  const grid = [];
+  for (let r = 0; r < ROOM_ROWS; r++) {
+    const row = [];
+    for (let c = 0; c < ROOM_COLS; c++) {
+      const border = r === 0 || c === 0 || r === ROOM_ROWS - 1 || c === ROOM_COLS - 1;
+      row.push(border ? 1 : 0);
+    }
+    grid.push(row);
+  }
+
+  const doors = createDoors(entryDir);
+  for (let i = 0; i < doors.length; i++) {
+    const door = doors[i];
+    grid[door.row][door.col] = 0;
+    if (door.row - 1 >= 0) grid[door.row - 1][door.col] = 0;
+    if (door.row + 1 < ROOM_ROWS) grid[door.row + 1][door.col] = 0;
+    if (door.col - 1 >= 0) grid[door.row][door.col - 1] = 0;
+    if (door.col + 1 < ROOM_COLS) grid[door.row][door.col + 1] = 0;
+  }
+
+  const inserts = Phaser.Math.Clamp(Math.floor(10 + difficulty * 4), 10, 40);
+  for (let i = 0; i < inserts; i++) {
+    const c = Math.floor(rng() * ROOM_COLS);
+    const r = Math.floor(rng() * ROOM_ROWS);
+    if (grid[r][c] === 0) {
+      grid[r][c] = 1;
+      if (rng() > 0.6 && r + 1 < ROOM_ROWS - 1) grid[r + 1][c] = 1;
+      if (rng() > 0.6 && c + 1 < ROOM_COLS - 1) grid[r][c + 1] = 1;
+    }
+  }
+
+  carvePaths(grid, doors, rng);
+
+  const orbCount = Phaser.Math.Clamp(3 + difficulty, 3, 12);
+  const orbs = [];
+  while (orbs.length < orbCount) {
+    const col = Phaser.Math.Between(2, ROOM_COLS - 3);
+    const row = Phaser.Math.Between(2, ROOM_ROWS - 3);
+    if (grid[row][col] === 0 && !doorTile(doors, col, row) && !existsIn(orbs, col, row)) {
+      orbs.push({ col, row });
+    }
+  }
+
+  const hazardCount = Phaser.Math.Clamp(Math.floor(2 + difficulty * 1.5), 2, 14);
+  const hazards = [];
+  while (hazards.length < hazardCount) {
+    const col = Phaser.Math.Between(1, ROOM_COLS - 2);
+    const row = Phaser.Math.Between(1, ROOM_ROWS - 2);
+    if (grid[row][col] === 0 && !doorTile(doors, col, row) && !existsIn(orbs, col, row)) {
+      hazards.push({
+        col,
+        row,
+        period: 1.5 + rng() * (3 + difficulty * 0.4),
+        activeWindow: 0.6 + rng() * 0.4,
+        timer: rng() * 3,
+        active: false
+      });
+    }
+  }
+
+  const entryDoor = doors.find(d => d.dir === (entryDir ? entryDir : 'S'));
+  const entryCol = entryDoor ? entryDoor.col : Math.floor(ROOM_COLS / 2);
+  const entryRow = entryDoor ? entryDoor.row + (entryDoor.dir === 'N' ? 1 : entryDoor.dir === 'S' ? -1 : 0) : ROOM_ROWS - 2;
+
   return {
-    shape:Phaser.Math.Between(0,SHAPES.length-1),
-    rot:0,
-    x:3,
-    y:-2,
-    species:Phaser.Math.Between(0,SPECIES.length-1),
-    jumped:false
+    grid,
+    doors,
+    orbs,
+    hazards,
+    entryCol,
+    entryRow,
+    entryDir: entryDir ? opposite(entryDir) : 'S'
   };
 }
 
-function spawnPiece(scene){
-  scene.cur=scene.nextPiece;
-  scene.cur.x=3;
-  scene.cur.y=-2;
-  scene.cur.rot=0;
-  scene.cur.jumped=false;
-  scene.nextPiece=makePiece();
-  updatePreview(scene);
-  if(collides(scene,scene.cur.x,scene.cur.y,scene.cur.rot)){
-    endGame(scene);
+function createDoors(entryDir) {
+  const midCol = Math.floor(ROOM_COLS / 2);
+  const midRow = Math.floor(ROOM_ROWS / 2);
+  const base = [
+    { dir: 'N', col: midCol, row: 0 },
+    { dir: 'S', col: midCol, row: ROOM_ROWS - 1 },
+    { dir: 'W', col: 0, row: midRow },
+    { dir: 'E', col: ROOM_COLS - 1, row: midRow }
+  ];
+  if (!entryDir) return base;
+  const doors = base.filter(d => d.dir !== opposite(entryDir));
+  doors.push(base.find(d => d.dir === opposite(entryDir)));
+  return doors;
+}
+
+function carvePaths(grid, doors, rng) {
+  const targets = [];
+  for (let i = 0; i < doors.length; i++) {
+    const door = doors[i];
+    targets.push({ col: door.col, row: door.row });
+  }
+  for (let i = 0; i < targets.length; i++) {
+    const target = targets[i];
+    const startCol = Math.floor(ROOM_COLS / 2);
+    const startRow = Math.floor(ROOM_ROWS / 2);
+    let col = startCol;
+    let row = startRow;
+    while (col !== target.col || row !== target.row) {
+      if (grid[row][col] === 1) grid[row][col] = 0;
+      if (rng() > 0.5) col += Math.sign(target.col - col);
+      else row += Math.sign(target.row - row);
+      if (col < 1) col = 1;
+      if (row < 1) row = 1;
+      if (col >= ROOM_COLS - 1) col = ROOM_COLS - 2;
+      if (row >= ROOM_ROWS - 1) row = ROOM_ROWS - 2;
+    }
   }
 }
 
-function updatePreview(scene){
-  const g=scene.nextPreview;
-  g.clear();
-  g.setDepth(6);
-  const spec=SPECIES[scene.nextPiece.species];
-  const shape=SHAPES[scene.nextPiece.shape][0];
-  const u=scene.previewCell;
-  for(let i=0;i<4;i++){
-    const x=shape[i][0],y=shape[i][1];
-    drawAnimalCellPreview(scene,g,(x-1)*u,(y-1)*u,u,spec,false);
-  }
-  scene.nextName.setText(`ESPECIE: ${spec.name.toUpperCase()}`);
-}
-
-function rotatePiece(scene){
-  const next=(scene.cur.rot+1)&3;
-  if(!collides(scene,scene.cur.x,scene.cur.y,next)){
-    scene.cur.rot=next;
-    beep(scene,720,0.04);
-    return;
-  }
-  if(!collides(scene,scene.cur.x-1,scene.cur.y,next)){
-    scene.cur.x--; scene.cur.rot=next; beep(scene,720,0.04); return;
-  }
-  if(!collides(scene,scene.cur.x+1,scene.cur.y,next)){
-    scene.cur.x++; scene.cur.rot=next; beep(scene,720,0.04);
-  }
-}
-
-function hardDrop(scene){
-  let steps=0;
-  while(!collides(scene,scene.cur.x,scene.cur.y+1,scene.cur.rot)){
-    scene.cur.y++; steps++;
-  }
-  if(steps>0) beep(scene,860,0.05);
-  scene.score+=steps;
-  lockPiece(scene);
-}
-
-function handleSideways(scene,dt){
-  if(justPressed(scene,'P1L')){ tryMove(scene,-1,0); scene.sideDelay=160; }
-  else if(justPressed(scene,'P1R')){ tryMove(scene,1,0); scene.sideDelay=160; }
-  scene.sideDelay=Math.max(0,scene.sideDelay-dt);
-  const left=isHeld(scene,'P1L'),right=isHeld(scene,'P1R');
-  const dir=right&&!left?1:left&&!right?-1:0;
-  if(dir && scene.sideDelay<=0){
-    if(tryMove(scene,dir,0)) scene.sideDelay=75;
-  }
-}
-
-function tryMove(scene,dx,dy){
-  if(!collides(scene,scene.cur.x+dx,scene.cur.y+dy,scene.cur.rot)){
-    scene.cur.x+=dx;
-    scene.cur.y+=dy;
-    return true;
+function existsIn(list, col, row) {
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].col === col && list[i].row === row) return true;
   }
   return false;
 }
 
-function collides(scene,x,y,rot){
-  const pts=SHAPES[scene.cur.shape][rot];
-  for(let i=0;i<4;i++){
-    const px=x+pts[i][0],py=y+pts[i][1];
-    if(px<0||px>=GRID_W||py>=GRID_H) return true;
-    if(py>=0 && scene.board[py*GRID_W+px]>=0) return true;
+function doorTile(doors, col, row) {
+  for (let i = 0; i < doors.length; i++) {
+    if (doors[i].col === col && doors[i].row === row) return true;
   }
   return false;
 }
 
-function lockPiece(scene){
-  const pts=SHAPES[scene.cur.shape][scene.cur.rot];
-  const sp=scene.cur.species;
-  for(let i=0;i<4;i++){
-    const px=scene.cur.x+pts[i][0],py=scene.cur.y+pts[i][1];
-    if(py<0){ endGame(scene); return; }
-    scene.board[py*GRID_W+px]=sp;
+function makeRNG(seed) {
+  let s = seed || 12345;
+  return function () {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function isDown(scene, key) {
+  const keyObj = scene.controls[key];
+  return keyObj ? keyObj.isDown : false;
+}
+
+function opposite(dir) {
+  if (dir === 'N') return 'S';
+  if (dir === 'S') return 'N';
+  if (dir === 'E') return 'W';
+  if (dir === 'W') return 'E';
+  return dir;
+}
+
+function createGradientFloor(g) {
+  const steps = 6;
+  for (let i = 0; i < steps; i++) {
+    const alpha = 0.18 - i * 0.02;
+    if (alpha <= 0) continue;
+    g.fillStyle(0x102039, alpha);
+    const inset = i * 16;
+    g.fillRect(ROOM_X - 40 + inset, ROOM_Y - 40 + inset, ROOM_W + 80 - inset * 2, ROOM_H + 80 - inset * 2);
   }
-  playSpeciesCue(scene,sp);
-  if(SPECIES[sp].name==='horse') horseMicroStep(scene,pts);
-  if(SPECIES[sp].name==='cow') settleCow(scene);
-  const cleared=clearRows(scene);
-  if(cleared.length){
-    const base=SCORE_TABLE[cleared.length]||0;
-    let mult=0;
-    let text='';
-    for(let i=0;i<cleared.length;i++){
-      const {counts}=cleared[i];
-      let dom=0;
-      if(counts[1]>counts[dom]) dom=1;
-      if(counts[2]>counts[dom]) dom=2;
-      let factor=1;
-      if(dom===0) factor+=0.25;
-      if(dom===2) factor+=0.1;
-      if(dom===1){
-        factor=counts[1]>=8?1.5:1.05;
-        text='REBAÑO PERFECTO x1.5';
-      }
-      mult+=factor;
-    }
-    const gain=Math.floor(base*(1+(scene.level-1)*0.16)*(mult/cleared.length));
-    scene.score+=gain;
-    scene.lines+=cleared.length;
-    if(text) flashBonus(scene,text);
-    scene.level=1+Math.floor(scene.lines/10);
-    scene.drop=Math.max(MIN_DROP,DROP_MS_START-(scene.level-1)*LEVEL_ACCEL);
-    beep(scene,420,0.08);
-  }
-  spawnPiece(scene);
-}
-
-function playSpeciesCue(scene,sp){
-  if(sp===0) beep(scene,180,0.1);
-  else if(sp===1){ beep(scene,520,0.03); beep(scene,760,0.04); }
-  else beep(scene,260,0.06);
-}
-
-function horseMicroStep(scene,pts){
-  let canJump=true;
-  for(let i=0;i<4;i++){
-    const px=scene.cur.x+pts[i][0],py=scene.cur.y+pts[i][1]+1;
-    if(py>=GRID_H || (py>=0 && scene.board[py*GRID_W+px]>=0)){ canJump=false; break; }
-  }
-  if(canJump){
-    for(let i=GRID_H-2;i>=0;i--){
-      for(let x=0;x<GRID_W;x++){
-        const id=i*GRID_W+x;
-        if(scene.board[id]===scene.cur.species && scene.board[(i+1)*GRID_W+x]<0){
-          scene.board[(i+1)*GRID_W+x]=scene.board[id];
-          scene.board[id]=-1;
-        }
-      }
-    }
-  }
-}
-
-function settleCow(scene){
-  for(let y=GRID_H-2;y>=0;y--){
-    for(let x=0;x<GRID_W;x++){
-      const id=y*GRID_W+x;
-      if(scene.board[id]===0 && scene.board[id+GRID_W]<0){
-        scene.board[id+GRID_W]=scene.board[id];
-        scene.board[id]=-1;
-      }
-    }
-  }
-}
-
-function clearRows(scene){
-  const cleared=[];
-  for(let y=GRID_H-1;y>=0;y--){
-    let full=true;
-    const counts=[0,0,0];
-    for(let x=0;x<GRID_W;x++){
-      const v=scene.board[y*GRID_W+x];
-      if(v<0){ full=false; break; }
-      counts[v]++;
-    }
-    if(full){
-      cleared.push({y,counts});
-      for(let yy=y;yy>0;yy--){
-        for(let x=0;x<GRID_W;x++){
-          scene.board[yy*GRID_W+x]=scene.board[(yy-1)*GRID_W+x];
-        }
-      }
-      for(let x=0;x<GRID_W;x++) scene.board[x]=-1;
-      y++;
-    }
-  }
-  return cleared;
-}
-
-function flashBonus(scene,text){
-  if(scene.bonusText) scene.bonusText.destroy();
-  scene.bonusText=scene.add.text(scene.BX+scene.BW/2,scene.BY+Math.max(scene.CELL*2.5,100),text,{
-    fontFamily:'monospace',
-    fontSize:22,
-    color:'#fff2ff',
-    stroke:'#ff94ff',
-    strokeThickness:3
-  }).setOrigin(0.5).setDepth(9);
-}
-
-function drawScene(scene){
-  const g=scene.boardLayer;
-  g.clear();
-  drawBoard(scene,g);
-  drawCurrent(scene,g);
-  updateHUD(scene);
-}
-
-function drawBoard(scene,g){
-  for(let y=0;y<GRID_H;y++){
-    for(let x=0;x<GRID_W;x++){
-      const v=scene.board[y*GRID_W+x];
-      if(v>=0) drawBlock(scene,g,x,y,SPECIES[v],false);
-    }
-  }
-}
-
-function drawCurrent(scene,g){
-  if(scene.gameOver) return;
-  const pts=SHAPES[scene.cur.shape][scene.cur.rot];
-  let dropY=scene.cur.y;
-  while(!collides(scene,scene.cur.x,dropY+1,scene.cur.rot)) dropY++;
-  for(let i=0;i<4;i++){
-    const gx=scene.cur.x+pts[i][0],gy=dropY+pts[i][1];
-    if(gy>=0) drawBlock(scene,g,gx,gy,SPECIES[scene.cur.species],true,0.18);
-  }
-  for(let i=0;i<4;i++){
-    const gx=scene.cur.x+pts[i][0],gy=scene.cur.y+pts[i][1];
-    if(gy>=0) drawBlock(scene,g,gx,gy,SPECIES[scene.cur.species],false);
-  }
-}
-
-function drawBlock(scene,g,gx,gy,spec,ghost,ghostAlpha){
-  const px=scene.BX+gx*scene.CELL;
-  const py=scene.BY+gy*scene.CELL;
-  const alpha=ghost?(ghostAlpha||0.15):0.85;
-  drawAnimalCell(scene,g,px,py,scene.CELL,spec,ghost,alpha);
-}
-
-function drawAnimalCell(scene,g,px,py,size,spec,ghost,alpha){
-  const pad=ghost?Math.max(2,Math.floor(size*0.1)):Math.max(1,Math.floor(size*0.08));
-  g.fillStyle(0x000000,0.18*alpha);
-  g.fillRoundedRect(px+pad,py+pad,size-pad*2,size-pad*2,Math.max(2,size*0.18));
-  g.fillStyle(spec.body,alpha);
-  g.fillRoundedRect(px+pad-1,py+pad-1,size-pad*2-1,size-pad*2-1,Math.max(2,size*0.2));
-  g.lineStyle(1,0xffffff,0.35*alpha);
-  g.strokeRect(px+0.5,py+0.5,size-1,size-1);
-  g.lineStyle(1,spec.glow,ghost?0.45:0.85);
-  g.strokeRoundedRect(px+pad-1,py+pad-1,size-pad*2+2,size-pad*2+2,Math.max(2,size*0.22));
-  const headSize=size*0.32;
-  if(spec.name==='cow'){
-    g.fillStyle(spec.accent,ghost?0.25:0.6);
-    g.fillEllipse(px+size*0.35,py+size*0.3,headSize,headSize*0.9);
-    g.fillEllipse(px+size*0.65,py+size*0.45,headSize*0.9,headSize*0.7);
-    g.fillRect(px+size*0.28,py+size*0.12,headSize*0.6,headSize*0.4);
-    g.lineStyle(2,spec.glow,ghost?0.3:0.8);
-    g.strokeLineShape(new Phaser.Geom.Line(px+size*0.25,py+size*0.15,px+size*0.2,py+size*0.02));
-    g.strokeLineShape(new Phaser.Geom.Line(px+size*0.75,py+size*0.18,px+size*0.82,py+size*0.05));
-  }else if(spec.name==='sheep'){
-    g.fillStyle(0xffffff,ghost?0.18:0.8);
-    for(let i=0;i<6;i++){
-      const angle=i*Math.PI/3;
-      g.fillCircle(px+size*0.5+Math.cos(angle)*size*0.18,py+size*0.45+Math.sin(angle)*size*0.18,size*0.16);
-    }
-    g.fillStyle(spec.accent,ghost?0.25:0.8);
-    g.fillEllipse(px+size*0.52,py+size*0.35,headSize*1.3,headSize);
-    g.fillEllipse(px+size*0.34,py+size*0.3,headSize*0.8,headSize*0.5);
-    g.fillEllipse(px+size*0.72,py+size*0.4,headSize*0.7,headSize*0.43);
-  }else{
-    g.fillStyle(spec.accent,ghost?0.22:0.7);
-    g.fillEllipse(px+size*0.55,py+size*0.38,headSize*1.4,headSize);
-    g.fillRect(px+size*0.72,py+size*0.26,headSize*0.6,headSize*1.5);
-    g.fillTriangle(px+size*0.36,py+size*0.2,px+size*0.6,py+size*0.1,px+size*0.52,py+size*0.36);
-    g.lineStyle(2,spec.glow,ghost?0.25:0.9);
-    g.strokeLineShape(new Phaser.Geom.Line(px+size*0.5,py+size*0.65,px+size*0.5,py+size*0.9));
-  }
-}
-
-function drawAnimalCellPreview(scene,g,px,py,size,spec,ghost){
-  const alpha=ghost?0.4:1;
-  drawAnimalCell(scene,g,px,py,size,spec,ghost,alpha);
-}
-
-function updateHUD(scene){
-  scene.hudText.setText(
-    `SCORE ${scene.score}\nLINEAS ${scene.lines}\nNIVEL ${scene.level}\nDROP ${Math.floor(scene.drop)}ms`
-  );
-  if(scene.gameOver) setMessage(scene,'GAME OVER\nSTART PARA REINTENTAR',true);
-}
-
-function setMessage(scene,text,visible){
-  scene.msg.setText(text);
-  scene.msg.setVisible(visible);
-}
-
-function endGame(scene){
-  if(scene.gameOver) return;
-  scene.gameOver=true;
-  setMessage(scene,'GAME OVER\nSTART PARA REINTENTAR',true);
-  beep(scene,150,0.35);
-}
-
-function resetGame(scene){
-  scene.scene.restart();
-}
-
-function drawScanlines(scene){
-  scene.scanlines.clear();
-  const W=scene.scale.gameSize.width,H=scene.scale.gameSize.height;
-  for(let y=0;y<H;y+=2){
-    scene.scanlines.fillStyle(0x000000,0.12);
-    scene.scanlines.fillRect(0,y,W,1);
-  }
-}
-
-function drawVignette(scene){
-  const g=scene.vignette;
-  g.clear();
-  const W=scene.scale.gameSize.width,H=scene.scale.gameSize.height;
-  const band=Math.max(40,Math.floor(scene.CELL*2.5));
-  g.fillStyle(0x000000,0.35);
-  g.fillRect(0,0,W,band);
-  g.fillRect(0,H-band,W,band);
-  g.fillRect(0,0,band,H);
-  g.fillRect(W-band,0,band,H);
-}
-
-function beep(scene,freq,dur){
-  try{
-    const ctx=scene.osc;
-    const osc=ctx.createOscillator();
-    const gain=ctx.createGain();
-    osc.frequency.value=freq;
-    osc.type='square';
-    gain.gain.setValueAtTime(0.08,ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.004,ctx.currentTime+dur);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime+dur);
-  }catch(_e){}
 }
 
