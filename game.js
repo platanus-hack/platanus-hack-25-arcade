@@ -425,6 +425,14 @@ let comboCount = 0;
 let comboMultiplier = 1;
 let comboText;
 
+// Infinite world helpers
+let worldBottom = 20000;
+const WORLD_CHUNK = 20000;
+const WORLD_MARGIN = 1200;
+let worldYOffset = 0;
+const REBASE_THRESHOLD = 200000;
+const REBASE_DELTA = 150000;
+
 // Charge Shot state
 let isCharging = false;
 let chargeStartTime = 0;
@@ -493,7 +501,7 @@ function create() {
 
   // ===== Downwell-like setup =====
   if (this.physics && this.physics.world) {
-    this.physics.world.setBounds(0, 0, 800, worldHeight);
+    this.physics.world.setBounds(0, 0, 800, worldBottom);
   }
 
   // Physics groups
@@ -734,6 +742,8 @@ function update(_time, _delta) {
   // Ensure platforms fill below camera; recycle those far above
   const cam = this.cameras.main;
   cam.scrollY = Math.max(cam.scrollY, player.y - 260);
+  // Grow world bounds on demand
+  ensureWorldCapacity(this, cam.scrollY + 1000);
   seedPlatforms(this, cam.scrollY + 100, cam.scrollY + 800);
   for (let i = 0; i < platforms.length; i++) {
     const p = platforms[i];
@@ -743,6 +753,8 @@ function update(_time, _delta) {
       if (p.body && p.body.updateFromGameObject) p.body.updateFromGameObject();
     }
   }
+  // Rebase coordinates to avoid large Y values
+  maybeRebaseWorld(this);
 
   // Cleanup bullets below view
   bullets = bullets.filter(b => {
@@ -769,6 +781,43 @@ function update(_time, _delta) {
 
   // Draw hurtboxes/hitboxes when enabled
   if (debugHitboxes) drawHitboxes(this);
+}
+
+function ensureWorldCapacity(scene, targetY) {
+  if (!scene.physics || !scene.physics.world) return;
+  const need = (targetY || 0) + WORLD_MARGIN;
+  if (need <= worldBottom) return;
+  while (worldBottom < need) worldBottom += WORLD_CHUNK;
+  scene.physics.world.setBounds(0, 0, 800, worldBottom);
+}
+
+function maybeRebaseWorld(scene) {
+  const cam = scene.cameras.main;
+  if (cam.scrollY < REBASE_THRESHOLD) return;
+  const dy = REBASE_DELTA;
+  worldYOffset += dy;
+  // Camera
+  cam.scrollY -= dy;
+  // Player
+  if (player) player.y -= dy;
+  // Platforms (static bodies)
+  for (let i = 0; i < platforms.length; i++) {
+    const p = platforms[i];
+    if (!p) continue;
+    if (p.y != null) p.y -= dy;
+    if (p.body && p.body.updateFromGameObject) p.body.updateFromGameObject();
+  }
+  // Enemies
+  if (enemiesGroup) {
+    enemiesGroup.getChildren().forEach(e => { if (e && e.y != null) e.y -= dy; });
+  }
+  // Bullets
+  if (bulletsGroup) {
+    bulletsGroup.getChildren().forEach(b => { if (b && b.y != null) b.y -= dy; });
+  }
+  // Hazards (static bodies)
+  if (leftHazard) { leftHazard.y -= dy; if (leftHazard.body && leftHazard.body.updateFromGameObject) leftHazard.body.updateFromGameObject(); }
+  if (rightHazard) { rightHazard.y -= dy; if (rightHazard.body && rightHazard.body.updateFromGameObject) rightHazard.body.updateFromGameObject(); }
 }
 
 
