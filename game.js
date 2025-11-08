@@ -439,6 +439,9 @@ const SHOOTER_SPAWN_CHANCE = 0.15;
 const SHOOTER_COOLDOWN_MIN_MS = 1200;
 const SHOOTER_COOLDOWN_MAX_MS = 1800;
 
+// Enemy Shield constants
+const SHIELDED_SPAWN_CHANCE = 0.08; // 8% chance
+
 // ===== Enemy bullets (UPWARD TRAJECTORY) =====
 const ENEMY_BULLET_SPEED_Y = -360; // negativo = hacia arriba
 
@@ -1028,13 +1031,20 @@ function spawnEnemy(scene, platform) {
   const ey = platform.y - ph / 2 - eh / 2;
   const enemy = scene.add.rectangle(ex, ey, ew, eh, isShooter ? 0xF527EE : (isJumper ? 0x27f565 : 0xff2222));
   enemy.type = isShooter ? 'shooterUp' : (isJumper ? 'jumper' : 'walker');
-  enemy.setStrokeStyle(1, isShooter ? 0xF74DF2 : (isJumper ? 0x27f565 : 0xff6666), 0.8);
+  
+  // Shield assignment
+  enemy.shielded = Math.random() < SHIELDED_SPAWN_CHANCE;
+  const strokeWidth = enemy.shielded ? 3 : 1;
+  const strokeColor = enemy.shielded ? 0x00ffff : (isShooter ? 0xF74DF2 : (isJumper ? 0x27f565 : 0xff6666));
+  enemy.setStrokeStyle(strokeWidth, strokeColor, 0.8);
+  
   scene.physics.add.existing(enemy);
 
+  // Alpha pulse (stronger for shielded)
   scene.tweens.add({
     targets: enemy,
-    alpha: { from: 1, to: 0.85 },
-    duration: 800,
+    alpha: { from: 1, to: enemy.shielded ? 0.7 : 0.85 },
+    duration: enemy.shielded ? 600 : 800,
     yoyo: true,
     repeat: -1,
     ease: 'Sine.easeInOut'
@@ -1122,6 +1132,31 @@ function updateEnemies(scene, deltaMs) {
 }
 
 function onBulletHitsEnemy(scene, bullet, enemy) {
+  // === SHIELD LOGIC ===
+  if (enemy && enemy.active && enemy.shielded) {
+    const isChargedBullet = bullet && bullet.isCharged;
+    if (!isChargedBullet) {
+      // Normal bullet bounces off shield
+      if (bullet && bullet.destroy) bullet.destroy();
+      // Shield bounce visuals
+      const flash = scene.add.circle(enemy.x, enemy.y, enemy.displayWidth / 2 + 4, 0x00ffff, 0.6);
+      flash.setDepth(1500);
+      scene.tweens.add({ targets: flash, scale: 1.4, alpha: 0, duration: 200, ease: 'Quad.easeOut', onComplete: () => flash.destroy() });
+      for (let i = 0; i < 4; i++) {
+        const angle = (i / 4) * Math.PI * 2;
+        const p = scene.add.rectangle(enemy.x, enemy.y, 3, 3, 0x00ffff);
+        scene.physics.add.existing(p);
+        p.body.setVelocity(Math.cos(angle) * 180, Math.sin(angle) * 180);
+        p.body.setGravity(0, 0);
+        scene.tweens.add({ targets: p, alpha: 0, scale: 0, duration: 250, onComplete: () => p.destroy() });
+      }
+      playTone(scene, 800, 0.08);
+      return; // Enemy survives
+    }
+    // Charged bullet breaks shield and kills enemy
+  }
+  
+  // === BULLET CLEANUP ===
   if (bullet && bullet.isCharged && bullet.pierceCount > 0) {
     bullet.pierceCount--;
     if (bullet.pierceCount <= 0 && bullet.destroy) { bullet.destroy(); }
@@ -1129,6 +1164,7 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
     if (bullet && bullet.destroy) bullet.destroy();
   }
   
+  // === ENEMY DEATH ===
   if (enemy && enemy.active) {
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
