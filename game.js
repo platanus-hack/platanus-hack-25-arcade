@@ -83,7 +83,7 @@ class LobbyScene extends Phaser.Scene {
       strokeThickness: 4
     }).setOrigin(0.5);
 
-    this.add.text(400, 65, 'AI DEVELOPER EDITION', {
+    this.add.text(400, 65, 'EDICIÓN DESARROLLADORES IA', {
       fontSize: '20px',
       color: '#ff0066',
       fontStyle: 'bold'
@@ -167,7 +167,7 @@ class LobbyScene extends Phaser.Scene {
     });
 
     // Prompts with better design
-    this.prompt1 = this.add.text(260, 410, '▶ PRESS SPACE\nDEFEND AI!', {
+    this.prompt1 = this.add.text(260, 410, '▶ PRESIONA ESPACIO\n¡DEFIENDE IA!', {
       fontSize: '16px',
       color: '#00ff88',
       backgroundColor: '#001a0a',
@@ -176,7 +176,7 @@ class LobbyScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5).setVisible(false);
 
-    this.prompt2 = this.add.text(540, 410, '▶ PRESS SPACE\nRESOLVE GIT!', {
+    this.prompt2 = this.add.text(540, 410, '▶ PRESIONA ESPACIO\n¡RESUELVE GIT!', {
       fontSize: '16px',
       color: '#ff6600',
       backgroundColor: '#1a0a00',
@@ -186,7 +186,7 @@ class LobbyScene extends Phaser.Scene {
     }).setOrigin(0.5).setVisible(false);
 
     // Controls hint with icons
-    this.add.text(400, 565, '⌨️ Arrow Keys or WASD to move  |  ⎵ SPACE to play', {
+    this.add.text(400, 565, '⌨️ Flechas o WASD para mover  |  ⎵ ESPACIO para jugar', {
       fontSize: '14px',
       color: '#666666'
     }).setOrigin(0.5);
@@ -300,7 +300,7 @@ class LobbyScene extends Phaser.Scene {
     this.konamiActive = true;
 
     // Epic coffee rain effect
-    const coffeeText = this.add.text(400, 300, '☕ UNLIMITED COFFEE MODE ☕\n🔥 GOD MODE ACTIVATED 🔥', {
+    const coffeeText = this.add.text(400, 300, '☕ MODO CAFÉ ILIMITADO ☕\n🔥 MODO DIOS ACTIVADO 🔥', {
       fontSize: '32px',
       color: '#ffff00',
       fontStyle: 'bold',
@@ -586,7 +586,7 @@ class PromptPanicScene extends Phaser.Scene {
     this.physics.add.overlap([this.ship1, this.ship2], this.powerUps, this.collectPowerUp, null, this);
 
     // UI with better layout
-    this.scoreText = this.add.text(16, 16, '🛡️ BLOCKED: 0', {
+    this.scoreText = this.add.text(16, 16, '🛡️ BLOQUEADOS: 0', {
       fontSize: '18px',
       color: '#00ff88',
       fontStyle: 'bold',
@@ -594,7 +594,7 @@ class PromptPanicScene extends Phaser.Scene {
       strokeThickness: 3
     });
 
-    this.waveText = this.add.text(400, 16, 'WAVE 1', {
+    this.waveText = this.add.text(400, 16, 'OLEADA 1', {
       fontSize: '22px',
       color: '#ff0066',
       fontStyle: 'bold',
@@ -615,7 +615,7 @@ class PromptPanicScene extends Phaser.Scene {
     });
 
     // Tutorial hint (fades out)
-    this.tutorialText = this.add.text(400, 450, '🎯 Shoot with UP/W  |  Move to dodge!', {
+    this.tutorialText = this.add.text(400, 450, '🎯 Dispara con ARRIBA/W  |  ¡Muévete para esquivar!', {
       fontSize: '16px',
       color: '#ffff00',
       backgroundColor: '#000000',
@@ -641,21 +641,21 @@ class PromptPanicScene extends Phaser.Scene {
   showWaveIntro() {
     // Funny wave intro messages
     const waveMessages = {
-      1: 'Testing in Production!',
-      2: 'Forgot to Validate Input!',
-      3: 'DDOS Attack Incoming!',
-      4: 'SQL Injection Detected!',
-      5: '⚠️ BOSS LEVEL: The Jailbreak!',
-      6: 'Zero Day Exploit!',
-      7: 'AI Gone Rogue!',
-      8: 'Memory Leak Crisis!',
-      9: 'Stack Overflow Imminent!',
-      10: '🔥 FINAL BOSS: Production Deploy!'
+      1: '¡Testing en Producción!',
+      2: '¡Olvidaste Validar el Input!',
+      3: '¡Ataque DDOS en Camino!',
+      4: '¡SQL Injection Detectado!',
+      5: '⚠️ JEFE: ¡El Jailbreak!',
+      6: '¡Exploit de Día Cero!',
+      7: '¡IA Fuera de Control!',
+      8: '¡Crisis de Memory Leak!',
+      9: '¡Stack Overflow Inminente!',
+      10: '🔥 JEFE FINAL: ¡Deploy a Producción!'
     };
 
-    const subtitle = waveMessages[this.wave] || `Prompt Attack Level ${this.wave}`;
+    const subtitle = waveMessages[this.wave] || `Ataque Prompt Nivel ${this.wave}`;
 
-    const intro = this.add.text(400, 280, `WAVE ${this.wave}`, {
+    const intro = this.add.text(400, 280, `OLEADA ${this.wave}`, {
       fontSize: '56px',
       color: '#00ff88',
       fontStyle: 'bold',
@@ -908,11 +908,11 @@ class PromptPanicScene extends Phaser.Scene {
   }
 
   startWave() {
-    this.waveText.setText('WAVE ' + this.wave);
+    this.waveText.setText('OLEADA ' + this.wave);
 
     // Survivor achievement
     if (this.wave === 10 && !this.achievements.survivor) {
-      this.unlockAchievement('survivor', '💪 Survivor', 'Reached wave 10!');
+      this.unlockAchievement('survivor', '💪 Sobreviviente', '¡Alcanzaste la oleada 10!');
     }
 
     // Boss wave every 5 waves
@@ -1166,15 +1166,15 @@ class PromptPanicScene extends Phaser.Scene {
 
       // First blood achievement
       if (this.totalKills === 1 && !this.achievements.firstBlood) {
-        this.unlockAchievement('firstBlood', '⚔️ First Blood', 'Blocked your first attack!');
+        this.unlockAchievement('firstBlood', '⚔️ Primera Sangre', '¡Bloqueaste tu primer ataque!');
       }
 
       // Perfect aim achievement
       if (this.accuracy.shots >= 10 && this.accuracy.hits === this.accuracy.shots && !this.achievements.perfectAim) {
-        this.unlockAchievement('perfectAim', '🎯 Sniper Elite', '100% accuracy with 10+ shots!');
+        this.unlockAchievement('perfectAim', '🎯 Francotirador Elite', '¡100% de precisión con 10+ disparos!');
       }
 
-      this.scoreText.setText('🛡️ BLOCKED: ' + this.score);
+      this.scoreText.setText('🛡️ BLOQUEADOS: ' + this.score);
 
       // Floating score text
       const scoreText = this.add.text(attack.x, attack.y, '+' + earnedPoints, {
@@ -1205,13 +1205,13 @@ class PromptPanicScene extends Phaser.Scene {
 
         // Combo milestone effects
         if (this.comboMult === 3) {
-          this.showComboMessage('NICE COMBO!', '#ffff00');
+          this.showComboMessage('¡BUEN COMBO!', '#ffff00');
         } else if (this.comboMult === 5) {
-          this.showComboMessage('UNSTOPPABLE!', '#ff6600');
+          this.showComboMessage('¡IMPARABLE!', '#ff6600');
         } else if (this.comboMult === 6) {
-          this.showComboMessage('LEGENDARY!', '#ff0000');
+          this.showComboMessage('¡LEGENDARIO!', '#ff0000');
           if (!this.achievements.unstoppable) {
-            this.unlockAchievement('unstoppable', '🔥 Unstoppable', 'Reached 6x combo multiplier!');
+            this.unlockAchievement('unstoppable', '🔥 Imparable', '¡Alcanzaste multiplicador x6!');
           }
         }
       }
@@ -1225,11 +1225,11 @@ class PromptPanicScene extends Phaser.Scene {
 
         // Boss slayer achievement
         if (!this.achievements.bossSlayer) {
-          this.unlockAchievement('bossSlayer', '👑 Boss Slayer', 'Defeated a boss attack!');
+          this.unlockAchievement('bossSlayer', '👑 Mata Jefes', '¡Derrotaste un ataque jefe!');
         }
 
         // Boss defeated message
-        const bossMsg = this.add.text(400, 300, 'JAILBREAK DEFEATED! 💀', {
+        const bossMsg = this.add.text(400, 300, '¡JAILBREAK DERROTADO! 💀', {
           fontSize: '42px',
           color: '#ffff00',
           fontStyle: 'bold',
@@ -1360,7 +1360,7 @@ class PromptPanicScene extends Phaser.Scene {
     if (type === '☕') {
       // Coffee: Speed boost
       this.speedBoost = 300; // 5 seconds at 60fps
-      msg = 'COFFEE RUSH! ☕';
+      msg = '¡CAFÉ RUSH! ☕';
       color = '#ff6600';
     } else if (type === '🔧') {
       // Debug tool: Temporary invincibility
@@ -1369,7 +1369,7 @@ class PromptPanicScene extends Phaser.Scene {
         this.lives = Math.min(this.lives + 1, 5);
         this.livesText.setText('❤️ '.repeat(this.lives));
       }
-      msg = 'DEBUG MODE! 🔧';
+      msg = '¡MODO DEBUG! 🔧';
       color = '#00ff88';
     } else if (type === '⚡') {
       // Lightning: Clear all enemies
@@ -1389,8 +1389,8 @@ class PromptPanicScene extends Phaser.Scene {
         attack.destroy();
       });
       this.score += attacksDestroyed * 50;
-      this.scoreText.setText('🛡️ BLOCKED: ' + this.score);
-      msg = 'STACK OVERFLOW! ⚡';
+      this.scoreText.setText('🛡️ BLOQUEADOS: ' + this.score);
+      msg = '¡STACK OVERFLOW! ⚡';
       color = '#ffff00';
     }
 
@@ -1416,7 +1416,7 @@ class PromptPanicScene extends Phaser.Scene {
 
     // Check coffee achievement
     if (type === '☕' && !this.achievements.coffeeAddict) {
-      this.unlockAchievement('coffeeAddict', '☕ Coffee Addict', 'Collected a coffee power-up!');
+      this.unlockAchievement('coffeeAddict', '☕ Adicto al Café', '¡Recolectaste un power-up de café!');
     }
   }
 
@@ -1484,7 +1484,7 @@ class PromptPanicScene extends Phaser.Scene {
     this.cameras.main.shake(400, 0.02);
 
     // Damage text
-    const dmg = this.add.text(defender.x, defender.y - 20, '-1 LIFE', {
+    const dmg = this.add.text(defender.x, defender.y - 20, '-1 VIDA', {
       fontSize: '20px',
       color: '#ff0000',
       fontStyle: 'bold',
@@ -1510,9 +1510,9 @@ class PromptPanicScene extends Phaser.Scene {
   waveComplete() {
     const bonus = this.wave * 150;
     this.score += bonus;
-    this.scoreText.setText('🛡️ BLOCKED: ' + this.score);
+    this.scoreText.setText('🛡️ BLOQUEADOS: ' + this.score);
 
-    const bonusText = this.add.text(400, 300, `WAVE ${this.wave} CLEARED!\n+${bonus} BONUS 🎉`, {
+    const bonusText = this.add.text(400, 300, `¡OLEADA ${this.wave} COMPLETADA!\n+${bonus} BONUS 🎉`, {
       fontSize: '38px',
       color: '#00ff88',
       fontStyle: 'bold',
@@ -1557,7 +1557,7 @@ class PromptPanicScene extends Phaser.Scene {
 
     this.add.rectangle(400, 300, 800, 600, 0x000000, 0.85);
 
-    this.add.text(400, 150, '💀 SYSTEM BREACHED 💀', {
+    this.add.text(400, 150, '💀 SISTEMA VULNERADO 💀', {
       fontSize: '64px',
       color: '#ff0000',
       fontStyle: 'bold',
@@ -1566,24 +1566,24 @@ class PromptPanicScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Stats box
-    this.add.text(400, 240, 'FINAL STATISTICS', {
+    this.add.text(400, 240, 'ESTADÍSTICAS FINALES', {
       fontSize: '24px',
       color: '#ffff00',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    this.add.text(400, 280, `Score: ${this.score} | Wave: ${this.wave} | Kills: ${this.totalKills}`, {
+    this.add.text(400, 280, `Puntaje: ${this.score} | Oleada: ${this.wave} | Eliminados: ${this.totalKills}`, {
       fontSize: '20px',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    this.add.text(400, 310, `Accuracy: ${accuracyPct}% (${this.accuracy.hits}/${this.accuracy.shots})`, {
+    this.add.text(400, 310, `Precisión: ${accuracyPct}% (${this.accuracy.hits}/${this.accuracy.shots})`, {
       fontSize: '18px',
       color: '#00ff88'
     }).setOrigin(0.5);
 
     if (newHS) {
-      this.add.text(400, 360, '🏆 NEW HIGH SCORE! 🏆', {
+      this.add.text(400, 360, '🏆 ¡NUEVO RÉCORD! 🏆', {
         fontSize: '32px',
         color: '#ffff00',
         fontStyle: 'bold',
@@ -1608,7 +1608,7 @@ class PromptPanicScene extends Phaser.Scene {
         });
       }
     } else {
-      this.add.text(400, 360, `High Score: ${hs}`, {
+      this.add.text(400, 360, `Récord Máximo: ${hs}`, {
         fontSize: '22px',
         color: '#888888'
       }).setOrigin(0.5);
@@ -1616,14 +1616,14 @@ class PromptPanicScene extends Phaser.Scene {
 
     // Funny developer messages based on performance
     const funnyMessages = [
-      'Did you forget to sanitize the inputs? 🤦',
-      'Time to update the threat model...',
-      'Maybe try adding more layers next time?',
-      'Your defense had more holes than Swiss cheese!',
-      'Stack Overflow couldn\'t save you now!',
-      'ERROR 418: I\'m a teapot (and you got pwned)',
-      'git blame yourself for this one...',
-      'Should\'ve used TypeScript 😏'
+      '¿Olvidaste sanitizar los inputs? 🤦',
+      'Hora de actualizar el modelo de amenazas...',
+      '¿Tal vez agregar más capas la próxima?',
+      '¡Tu defensa tenía más hoyos que queso suizo!',
+      '¡Stack Overflow no pudo salvarte ahora!',
+      'ERROR 418: Soy una tetera (y te hackearon)',
+      'git blame a ti mismo por esto...',
+      'Deberías haber usado TypeScript 😏'
     ];
     const funnyMsg = this.score < 500 ? funnyMessages[0] :
                      this.wave < 5 ? funnyMessages[1] :
@@ -1636,7 +1636,7 @@ class PromptPanicScene extends Phaser.Scene {
       fontStyle: 'italic'
     }).setOrigin(0.5);
 
-    this.add.text(400, 470, 'Returning to lobby...', {
+    this.add.text(400, 470, 'Volviendo al lobby...', {
       fontSize: '16px',
       color: '#888888'
     }).setOrigin(0.5);
@@ -1752,7 +1752,7 @@ class MergeConflictScene extends Phaser.Scene {
       strokeThickness: 4
     }).setOrigin(0.5);
 
-    this.conflictText = this.add.text(784, 16, 'LINES: 0', {
+    this.conflictText = this.add.text(784, 16, 'LÍNEAS: 0', {
       fontSize: '18px',
       color: '#ffff00',
       fontStyle: 'bold',
@@ -1765,7 +1765,7 @@ class MergeConflictScene extends Phaser.Scene {
     });
 
     // Next block preview with label
-    this.add.text(620, 90, 'NEXT:', {
+    this.add.text(620, 90, 'PRÓXIMO:', {
       fontSize: '18px',
       color: '#ff6600',
       fontStyle: 'bold'
@@ -1780,13 +1780,13 @@ class MergeConflictScene extends Phaser.Scene {
     this.nextPreview = this.add.container(650, 140);
 
     // Controls hint
-    this.add.text(400, 565, '⬅️➡️ Move  |  ⬆️ Rotate  |  ⬇️ Fast Drop', {
+    this.add.text(400, 565, '⬅️➡️ Mover  |  ⬆️ Rotar  |  ⬇️ Caída Rápida', {
       fontSize: '14px',
       color: '#666666'
     }).setOrigin(0.5);
 
     // Tutorial
-    this.tutorialText = this.add.text(400, 420, '💡 Clear lines to resolve conflicts!', {
+    this.tutorialText = this.add.text(400, 420, '💡 ¡Limpia líneas para resolver conflictos!', {
       fontSize: '16px',
       color: '#ffff00',
       backgroundColor: '#000000',
@@ -1826,7 +1826,7 @@ class MergeConflictScene extends Phaser.Scene {
   }
 
   showSprintIntro() {
-    const intro = this.add.text(400, 300, `SPRINT ${this.sprint}\nSTART!`, {
+    const intro = this.add.text(400, 300, `SPRINT ${this.sprint}\n¡INICIO!`, {
       fontSize: '48px',
       color: '#ff6600',
       fontStyle: 'bold',
@@ -2157,17 +2157,17 @@ class MergeConflictScene extends Phaser.Scene {
       this.linesCleared += linesCleared;
 
       this.scoreText.setText('🔀 MERGES: ' + this.score);
-      this.conflictText.setText('LINES: ' + this.conflicts);
+      this.conflictText.setText('LÍNEAS: ' + this.conflicts);
 
       // Achievement messages
       if (linesCleared === 1) {
-        this.showMessage('SINGLE! +100', '#00ff88', this.fieldX + 125, this.fieldY + 150);
+        this.showMessage('¡SIMPLE! +100', '#00ff88', this.fieldX + 125, this.fieldY + 150);
       } else if (linesCleared === 2) {
-        this.showMessage('DOUBLE! +300', '#ffff00', this.fieldX + 125, this.fieldY + 150);
+        this.showMessage('¡DOBLE! +300', '#ffff00', this.fieldX + 125, this.fieldY + 150);
       } else if (linesCleared === 3) {
-        this.showMessage('TRIPLE! +600', '#ff6600', this.fieldX + 125, this.fieldY + 150);
+        this.showMessage('¡TRIPLE! +600', '#ff6600', this.fieldX + 125, this.fieldY + 150);
       } else if (linesCleared === 4) {
-        this.showMessage('TETRIS! +1000 🔥', '#ff0000', this.fieldX + 125, this.fieldY + 150);
+        this.showMessage('¡TETRIS! +1000 🔥', '#ff0000', this.fieldX + 125, this.fieldY + 150);
         this.cameras.main.shake(300, 0.01);
       }
 
@@ -2245,7 +2245,7 @@ class MergeConflictScene extends Phaser.Scene {
     this.score += bonus;
     this.scoreText.setText('🔀 MERGES: ' + this.score);
 
-    const bonusText = this.add.text(400, 300, `SPRINT ${this.sprint - 1} COMPLETE!\n+${bonus} BONUS 🎉`, {
+    const bonusText = this.add.text(400, 300, `¡SPRINT ${this.sprint - 1} COMPLETO!\n+${bonus} BONUS 🎉`, {
       fontSize: '42px',
       color: '#ff6600',
       fontStyle: 'bold',
@@ -2284,7 +2284,7 @@ class MergeConflictScene extends Phaser.Scene {
 
     this.add.rectangle(400, 300, 800, 600, 0x000000, 0.85);
 
-    this.add.text(400, 140, '💥 MERGE FAILED 💥', {
+    this.add.text(400, 140, '💥 MERGE FALLÓ 💥', {
       fontSize: '72px',
       color: '#ff0000',
       fontStyle: 'bold',
@@ -2293,24 +2293,24 @@ class MergeConflictScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Stats
-    this.add.text(400, 230, 'FINAL STATISTICS', {
+    this.add.text(400, 230, 'ESTADÍSTICAS FINALES', {
       fontSize: '24px',
       color: '#ffff00',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    this.add.text(400, 270, `Score: ${this.score} | Lines: ${this.linesCleared}`, {
+    this.add.text(400, 270, `Puntaje: ${this.score} | Líneas: ${this.linesCleared}`, {
       fontSize: '20px',
       color: '#ffffff'
     }).setOrigin(0.5);
 
-    this.add.text(400, 300, `Sprint Reached: ${this.sprint}`, {
+    this.add.text(400, 300, `Sprint Alcanzado: ${this.sprint}`, {
       fontSize: '20px',
       color: '#00ff88'
     }).setOrigin(0.5);
 
     if (newHS) {
-      this.add.text(400, 360, '🏆 NEW HIGH SCORE! 🏆', {
+      this.add.text(400, 360, '🏆 ¡NUEVO RÉCORD! 🏆', {
         fontSize: '32px',
         color: '#ffff00',
         fontStyle: 'bold',
@@ -2318,7 +2318,7 @@ class MergeConflictScene extends Phaser.Scene {
         strokeThickness: 4
       }).setOrigin(0.5);
     } else {
-      this.add.text(400, 360, `High Score: ${hs}`, {
+      this.add.text(400, 360, `Récord Máximo: ${hs}`, {
         fontSize: '22px',
         color: '#888888'
       }).setOrigin(0.5);
@@ -2326,14 +2326,14 @@ class MergeConflictScene extends Phaser.Scene {
 
     // Funny developer git messages based on performance
     const gitMessages = [
-      'git commit -m "i have no idea what i\'m doing"',
-      'git push --force (your luck just ran out)',
-      'Merge conflict in brain.js line 404',
-      'You probably should have made a backup branch...',
-      'This is why we do code reviews!',
-      'git blame: pointing fingers since 2005',
-      'Time to rebase your life choices 😅',
-      'CONFLICT (content): Merge failed in fun.js'
+      'git commit -m "no tengo idea de lo que hago"',
+      'git push --force (se te acabó la suerte)',
+      'Merge conflict en cerebro.js linea 404',
+      'Probablemente debiste hacer un backup branch...',
+      '¡Por esto hacemos code reviews!',
+      'git blame: señalando dedos desde 2005',
+      'Hora de rebase tus decisiones de vida 😅',
+      'CONFLICT (content): Merge falló en diversion.js'
     ];
     const gitMsg = this.score < 300 ? gitMessages[0] :
                    this.linesCleared < 10 ? gitMessages[3] :
@@ -2346,7 +2346,7 @@ class MergeConflictScene extends Phaser.Scene {
       fontStyle: 'italic'
     }).setOrigin(0.5);
 
-    this.add.text(400, 470, 'Returning to lobby...', {
+    this.add.text(400, 470, 'Volviendo al lobby...', {
       fontSize: '16px',
       color: '#888888'
     }).setOrigin(0.5);
