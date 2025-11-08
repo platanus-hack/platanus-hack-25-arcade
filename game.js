@@ -580,12 +580,18 @@ function create() {
   this.physics.add.collider(player, platformsGroup);
   this.physics.add.collider(bulletsGroup, platformsGroup, (b, _p) => { if (b && b.destroy) b.destroy(); });
   this.physics.add.overlap(bulletsGroup, enemiesGroup, (b, e) => onBulletHitsEnemy(this, b, e));
-  this.physics.add.overlap(enemyBulletsGroup, player, (b, _p) => {
+  this.physics.add.overlap(enemyBulletsGroup, player, (obj1, obj2) => {
+    // Identifica con seguridad quién es la bala y quién el jugador
+    const bullet  = obj1?.isEnemyBullet ? obj1 : obj2;
+    const pl      = obj1?.isEnemyBullet ? obj2 : obj1;
+
+    // Destruye SIEMPRE la bala que tocó al jugador
+    if (bullet && bullet.destroy) bullet.destroy();
+
+    // Si no está en invulnerabilidad, aplica el daño “escudado”
     if (!gameOver && !isInvulnerable) {
       if (jetpackActive) {
-        // Jetpack absorbs hit (armor)
-        if (b && b.destroy) b.destroy();
-        onJetpackDamaged(this);
+        onJetpackDamaged(this);   // rompe jetpack y activa invulnerabilidad
       } else {
         endGame(this);
       }
@@ -864,6 +870,7 @@ function update(_time, _delta) {
   if (isInvulnerable && this.time.now >= invulnerabilityEndTime) {
     isInvulnerable = false;
     player.setAlpha(1);
+    player.setFillStyle(0xffffff); // Restore white color
   }
 
   // Hazards follow camera and toggle
@@ -1263,9 +1270,9 @@ function updateEnemies(scene, deltaMs) {
         // ---- BALAS ENEMIGAS: trayectoria vertical hacia ARRIBA, sin gravedad ----
         const by = e.y - (e.displayHeight || 14) / 2;
         const b = scene.add.rectangle(e.x, by, 4, 12, 0xFC03F5);
+        b.isEnemyBullet = true;           // <-- FLAG para reconocerla
         scene.physics.add.existing(b);
         if (b.body) {
-          // asegurar que sean dinámicas y se muevan
           b.body.setAllowGravity(false);
           b.body.setGravity(0, 0);
           b.body.setDrag(0, 0);
@@ -1510,6 +1517,13 @@ function onJetpackDamaged(scene) {
   isInvulnerable = true;
   invulnerabilityEndTime = scene.time.now + INVULNERABILITY_DURATION_MS;
   
+  // Kill any existing tweens on player to prevent conflicts
+  scene.tweens.killTweensOf(player);
+  
+  // Ensure player is fully visible before starting new animations
+  player.setAlpha(1);
+  player.setScale(1, 1);
+  
   // Explosion particles from jetpack
   for (let i = 0; i < 12; i++) {
     const angle = (i / 12) * Math.PI * 2;
@@ -1553,7 +1567,14 @@ function startInvulnerabilityFlicker(scene) {
     duration: 150,
     yoyo: true,
     repeat: Math.floor(INVULNERABILITY_DURATION_MS / 300) - 1,
-    ease: 'Linear'
+    ease: 'Linear',
+    onComplete: () => {
+      // Ensure player is fully visible when flicker ends
+      if (player) {
+        player.setAlpha(1);
+        player.setFillStyle(0xffffff);
+      }
+    }
   });
 }
 
