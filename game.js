@@ -1,24 +1,6 @@
 // Platanus Hack 25: CHAINFALL
 
-// =============================================================================
-// ARCADE BUTTON MAPPING - COMPLETE TEMPLATE
-// =============================================================================
-// Reference: See button-layout.webp at hack.platan.us/assets/images/arcade/
-//
-// Maps arcade button codes to keyboard keys for local testing.
-// Each arcade code can map to multiple keyboard keys (array values).
-// The arcade cabinet sends codes like 'P1U', 'P1A', etc. when buttons are pressed.
-//
-// To use in your game:
-//   if (key === 'P1U') { ... }  // Works on both arcade and local (via keyboard)
-//
-// CURRENT GAME USAGE (CHAINFALL):
-//   - P1L/P1R (Joystick) → Move left/right
-//   - P1U → Jump (grounded)
-//   - P1A → Shoot down (in air)
-//   - P1B → Charge Shot (hold)
-//   - START1 → Start/Confirm/Restart
-// =============================================================================
+// Arcade mapping: P1L/R (move), P1U (jump), P1A (shoot), P1B (ray gun), START1 (restart)
 
 const ARCADE_CONTROLS = {
   // ===== PLAYER 1 CONTROLS (CHAINFALL) =====
@@ -413,7 +395,6 @@ let wasOnGround = false;
 let ammo = 3;
 let maxAmmo = 4;
 let maxDepth = 0;
-let worldHeight = 1000000;
 let speed = 220;
 let jump = 300;
 let recoil = 240;
@@ -424,6 +405,14 @@ let debugGraphics;
 let comboCount = 0;
 let comboMultiplier = 1;
 let comboText;
+
+// String constants for minification
+const FONT = 'Arial, sans-serif';
+const C_BLACK = '#000000';
+const C_WHITE = '#ffffff';
+const C_CYAN = '#00ffff';
+const C_YELLOW = '#ffff00';
+const C_RED = '#ff0000';
 
 // Infinite world helpers
 let worldBottom = 20000;
@@ -436,8 +425,7 @@ const REBASE_DELTA = 150000;
 // Charge Shot state
 let isCharging = false;
 let chargeStartTime = 0;
-let chargeVisuals = null;       // grupo para visuales de canalización
-let slowMoTween = null;         // tween de time scale (no usado, pero por compatibilidad)
+let chargeVisuals = null;
 
 // ===== Jumper balance constants =====
 const JUMPER_SPAWN_CHANCE = 0.15;
@@ -487,7 +475,6 @@ function create() {
   isCharging = false;
   chargeStartTime = 0;
   chargeVisuals = null;
-  slowMoTween = null;
   chargeAudioCompleted = false;
   stopChargeAudio(this); // asegurar que no haya audio residual
   
@@ -518,10 +505,7 @@ function create() {
   startPlat.setStrokeStyle(2, 0xffaa00, 0.9);
   this.physics.add.existing(startPlat, true);
   if (startPlat.body) {
-    startPlat.body.checkCollision.up = true;
-    startPlat.body.checkCollision.down = true;
-    startPlat.body.checkCollision.left = true;
-    startPlat.body.checkCollision.right = true;
+    startPlat.body.checkCollision.up = startPlat.body.checkCollision.down = startPlat.body.checkCollision.left = startPlat.body.checkCollision.right = true;
     if (startPlat.body.updateFromGameObject) startPlat.body.updateFromGameObject();
   }
   startPlat.enemies = [];
@@ -538,10 +522,7 @@ function create() {
   player.body.setMaxVelocity(300, 700);
   player.body.setDragX(800);
   player.body.enable = true;
-  player.body.checkCollision.up = true;
-  player.body.checkCollision.down = true;
-  player.body.checkCollision.left = true;
-  player.body.checkCollision.right = true;
+  player.body.checkCollision.up = player.body.checkCollision.down = player.body.checkCollision.left = player.body.checkCollision.right = true;
 
   // Seed platforms
   seedPlatforms(this, 220, this.cameras.main.scrollY + 800);
@@ -906,7 +887,6 @@ function restartGame(scene) {
   isCharging = false;
   chargeStartTime = 0;
   if (chargeVisuals) { chargeVisuals.destroy(); chargeVisuals = null; }
-  if (slowMoTween) { slowMoTween.stop(); slowMoTween = null; }
   chargeAudioCompleted = false;
   stopChargeAudio(scene);
 
@@ -936,10 +916,7 @@ function createPlatform(scene, y) {
   rect.setStrokeStyle(1, 0x0088dd, 0.8);
   scene.physics.add.existing(rect, true);
   if (rect.body) {
-    rect.body.checkCollision.up = true;
-    rect.body.checkCollision.down = true;
-    rect.body.checkCollision.left = true;
-    rect.body.checkCollision.right = true;
+    rect.body.checkCollision.up = rect.body.checkCollision.down = rect.body.checkCollision.left = rect.body.checkCollision.right = true;
   }
   rect.enemies = [];
   if (platformsGroup) platformsGroup.add(rect);
@@ -959,10 +936,7 @@ function positionPlatform(scene, rect, y) {
   rect.setStrokeStyle(1, 0x0088dd, 0.8);
   rect.noEnemies = false;
   if (rect.body) {
-    rect.body.checkCollision.up = true;
-    rect.body.checkCollision.down = true;
-    rect.body.checkCollision.left = true;
-    rect.body.checkCollision.right = true;
+    rect.body.checkCollision.up = rect.body.checkCollision.down = rect.body.checkCollision.left = rect.body.checkCollision.right = true;
     if (rect.body.updateFromGameObject) rect.body.updateFromGameObject();
   }
   if (rect.enemies && rect.enemies.length) {
@@ -984,10 +958,7 @@ function fireBullet(scene) {
   if (b.body && b.body.setSize) b.body.setSize(6, 14, true);
   b.body.setAllowGravity(false);
   b.body.enable = true;
-  b.body.checkCollision.up = true;
-  b.body.checkCollision.down = true;
-  b.body.checkCollision.left = true;
-  b.body.checkCollision.right = true;
+  b.body.checkCollision.up = b.body.checkCollision.down = b.body.checkCollision.left = b.body.checkCollision.right = true;
   b.body.setVelocityY(550);
   if (bulletsGroup) bulletsGroup.add(b);
   bullets.push(b);
@@ -1044,10 +1015,7 @@ function spawnEnemy(scene, platform) {
 
   enemy.body.setSize(ew, eh, true);
   enemy.body.enable = true;
-  enemy.body.checkCollision.up = true;
-  enemy.body.checkCollision.down = true;
-  enemy.body.checkCollision.left = true;
-  enemy.body.checkCollision.right = true;
+  enemy.body.checkCollision.up = enemy.body.checkCollision.down = enemy.body.checkCollision.left = enemy.body.checkCollision.right = true;
   
   enemy.minX = platform.x - pw / 2 + 14;
   enemy.maxX = platform.x + pw / 2 - 14;
@@ -1125,19 +1093,17 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
       }
       earnedScore = Math.floor(50 * comboMultiplier);
       score += earnedScore;
-      let textColor = '#00ffff', textSize = 18, strokeThickness = 3, shakeIntensity = 0.005, comboMessage = '';
-      if (comboCount >= 10) { textColor = '#ff00ff'; textSize = 28; strokeThickness = 5; shakeIntensity = 0.02; comboMessage = 'GODLIKE!'; }
-      else if (comboCount >= 7) { textColor = '#ff0080'; textSize = 24; strokeThickness = 4; shakeIntensity = 0.015; comboMessage = 'INSANE!'; }
-      else if (comboCount >= 5) { textColor = '#ff4400'; textSize = 22; strokeThickness = 4; shakeIntensity = 0.012; comboMessage = 'AMAZING!'; }
-      else if (comboCount >= 3) { textColor = '#ffff00'; textSize = 20; strokeThickness = 3; shakeIntensity = 0.008; comboMessage = 'GREAT!'; }
-      else if (isFirstCombo) { comboMessage = 'COMBO START!'; }
+      const tiers = [[10,'#ff00ff',28,5,0.02,'GODLIKE!'],[7,'#ff0080',24,4,0.015,'INSANE!'],[5,'#ff4400',22,4,0.012,'AMAZING!'],[3,C_YELLOW,20,3,0.008,'GREAT!']];
+      const tier = tiers.find(t => comboCount >= t[0]) || [0,C_CYAN,18,3,0.005,''];
+      let [,textColor,textSize,strokeThickness,shakeIntensity,comboMessage] = tier;
+      if (isFirstCombo && !comboMessage) comboMessage = 'COMBO START!';
       const t = scene.add.text(enemy.x, enemy.y - 10, '+' + earnedScore, {
-        fontSize: textSize + 'px', fontFamily: 'Arial, sans-serif', color: textColor, stroke: '#000000', strokeThickness: strokeThickness
+        fontSize: textSize + 'px', fontFamily: FONT, color: textColor, stroke: C_BLACK, strokeThickness: strokeThickness
       }).setOrigin(0.5);
       scene.tweens.add({ targets: t, y: t.y - 30, scale: { from: 0.5, to: 1.2 }, alpha: 0, duration: 700, ease: 'Back.easeOut', onComplete: () => t.destroy() });
       if (comboMessage) {
         const msg = scene.add.text(enemy.x, enemy.y - 35, comboMessage, {
-          fontSize: (textSize + 4) + 'px', fontFamily: 'Arial, sans-serif', color: textColor, stroke: '#ffffff', strokeThickness: 2
+          fontSize: (textSize + 4) + 'px', fontFamily: FONT, color: textColor, stroke: C_WHITE, strokeThickness: 2
         }).setOrigin(0.5);
         scene.tweens.add({ targets: msg, y: msg.y - 40, scale: { from: 1.5, to: 0.8 }, alpha: { from: 1, to: 0 }, duration: 1000, ease: 'Power2', onComplete: () => msg.destroy() });
       }
@@ -1153,7 +1119,7 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
       score += earnedScore;
       ammo = Math.min(maxAmmo, ammo + 1);
       const t = scene.add.text(enemy.x, enemy.y - 10, '+50', {
-        fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#ffdd55', stroke: '#000000', strokeThickness: 2
+        fontSize: '16px', fontFamily: FONT, color: '#ffdd55', stroke: C_BLACK, strokeThickness: 2
       }).setOrigin(0.5);
       scene.tweens.add({ targets: t, y: t.y - 20, alpha: 0, duration: 500, onComplete: () => t.destroy() });
       if (scene.ammoText) { scene.ammoText.setText('Ammo: ' + ammo); scene.ammoText.setColor('#ffff00'); }
@@ -1172,10 +1138,7 @@ function startCharging(scene) {
   chargeAudioCompleted = false;
 
   // Slow-mo global
-  if (scene.physics && scene.physics.world) {
-    scene.physics.world.timeScale = CHARGE_SLOWMO_SCALE;
-  }
-  
+  if (scene.physics && scene.physics.world) scene.physics.world.timeScale = CHARGE_SLOWMO_SCALE;
   // Visuales de canalización
   if (!chargeVisuals) {
     chargeVisuals = scene.add.graphics();
@@ -1200,10 +1163,7 @@ function stopCharging(scene, fired = false) {
   isCharging = false;
 
   // Restaurar velocidad normal
-  if (scene.physics && scene.physics.world) {
-    scene.physics.world.timeScale = 1.0;
-  }
-  slowMoTween = null;
+  if (scene.physics && scene.physics.world) scene.physics.world.timeScale = 1.0;
   
   // Limpiar visuales
   if (chargeVisuals) {
