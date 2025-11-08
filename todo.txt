@@ -4,3 +4,7 @@ haz que, para el modo de un solo jugador, el juego lea una lista de elementos de
 3 - la nota es doble
 4 - la nota es triple
 al haber desaparecido la última nota de esta lista de elementos, el juego debe decir "you win" si el jugador obtuvo más de la mitad de los puntos y debe decir "perfect clear" si el jugador obtuvo más del 95% de los puntos. de otro modo debe decir "you lose"
+la idea es con esto crear "beatmaps" similares a los de osu.
+
+
+pnpm dev

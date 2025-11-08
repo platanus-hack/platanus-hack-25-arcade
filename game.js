@@ -45,8 +45,31 @@ let keysDown = {};
 const baseMultiProb = 0.1;
 // game mode
 let singlePlayer = false;
-// max possible score for single player simulation
-let maxPossibleScore = 0;
+// beatmap for single player: [time_ms, frequency_hz, change_type]
+const beatmap = [
+  [1000, 440, 2], // start with change
+  [800, 494, 1],  // same lane
+  [600, 523, 2],  // change
+  [700, 587, 3],  // double
+  [500, 659, 1],  // same
+  [600, 698, 4],  // triple
+  [800, 784, 2],  // change
+  [700, 880, 3],  // double
+  [600, 988, 1],  // same
+  [500, 1047, 2], // change
+  [400, 1175, 3], // double
+  [400, 1319, 4], // triple
+  [400, 1397, 2], // change
+  [400, 1568, 1], // same
+  [400, 1760, 3],  // double
+  [400, 1976, 2],  // change
+  [400, 2093, 4],  // triple
+  [400, 2349, 1],   // same
+  [400, 2637, 2]    // final change
+];
+let beatmapIndex = 0;
+let lastLane = 0;
+let totalPossibleScore = 0;
 function gameCreate() {
   const s = this;
   // reset runtime state (useful when scene restarts)
@@ -58,7 +81,9 @@ function gameCreate() {
   difficultyMultiplier = 1.0;
   leadTimer = 0;
   running = true;
-  maxPossibleScore = 0;
+  beatmapIndex = 0;
+  lastLane = 0;
+  totalPossibleScore = 0;
   g = s.add.graphics();
   halfWidth = (cfg.width - separatorWidth) / 2;
   laneW = halfWidth / lanes;
@@ -87,35 +112,55 @@ function gameCreate() {
     s.scene.start('Menu');
   });
 
-  // dynamic spawn scheduling (uses current spawnRate so we can change it)
-  function scheduleSpawn() {
-    s.time.delayedCall(spawnRate, () => {
-      if (Math.random() < 0.75) {
-        const isMulti = Math.random() < baseMultiProb * difficultyMultiplier;
-        if (isMulti) {
-          let count = 2;
-          if (Math.random() < baseMultiProb * difficultyMultiplier) count = 3;
-          spawn(notes1, 0, true, count);
-          if (!singlePlayer) spawn(notes2, 1, true, count);
-        } else {
-          spawn(notes1, 0, false);
-          if (!singlePlayer) spawn(notes2, 1, false);
+  if (singlePlayer) {
+    // calculate total possible score
+    totalPossibleScore = beatmap.reduce((sum, [t, f, c]) => {
+      if (c === 3) return sum + 200;
+      if (c === 4) return sum + 300;
+      return sum + 100;
+    }, 0);
+    // schedule beatmap notes
+    function scheduleBeatmapNote(index) {
+      if (index >= beatmap.length) return;
+      const [time, freq, change] = beatmap[index];
+      s.time.delayedCall(time, () => {
+        spawnBeatmapNote(freq, change);
+        beatmapIndex = index + 1;
+        scheduleBeatmapNote(index + 1);
+      });
+    }
+    scheduleBeatmapNote(0);
+  } else {
+    // dynamic spawn scheduling (uses current spawnRate so we can change it)
+    function scheduleSpawn() {
+      s.time.delayedCall(spawnRate, () => {
+        if (Math.random() < 0.75) {
+          const isMulti = Math.random() < baseMultiProb * difficultyMultiplier;
+          if (isMulti) {
+            let count = 2;
+            if (Math.random() < baseMultiProb * difficultyMultiplier) count = 3;
+            spawn(notes1, 0, true, count);
+            spawn(notes2, 1, true, count);
+          } else {
+            spawn(notes1, 0, false);
+            spawn(notes2, 1, false);
+          }
         }
+        scheduleSpawn();
+      });
+    }
+    scheduleSpawn();
+
+    // every 30s increase difficulty: speed * 1.2 and more notes (spawnRate /= 1.2)
+    s.time.addEvent({
+      delay: 30000, loop: true, callback: () => {
+        speed = Math.round(speed * 1.2);
+        spawnRate = Math.max(50, Math.floor(spawnRate / 1.2));
+        difficultyMultiplier *= 1.2;
+        timerText.setText('Diff x' + difficultyMultiplier.toFixed(2));
       }
-      scheduleSpawn();
     });
   }
-  scheduleSpawn();
-
-  // every 30s increase difficulty: speed * 1.2 and more notes (spawnRate /= 1.2)
-  s.time.addEvent({
-    delay: 30000, loop: true, callback: () => {
-      speed = Math.round(speed * 1.2);
-      spawnRate = Math.max(50, Math.floor(spawnRate / 1.2));
-      difficultyMultiplier *= 1.2;
-      timerText.setText('Diff x' + difficultyMultiplier.toFixed(2));
-    }
-  });
 
   // Title at top
   s.add.text(400, 30, 'DUEL RHYTHM', { font: '28px Arial', fill: '#ffd966' }).setOrigin(0.5, 0.5);
@@ -153,7 +198,39 @@ function spawn(arr, side, isMulti = false, count = 2) {
   // for multi, center on the first lane, but draw each
   const x = baseX + lanesForNote[0] * laneW + laneW / 2 - Math.floor(noteWidth / 2);
   arr.push({ x: x, y: -30, lanes: lanesForNote, side: side, hit: false });
-  maxPossibleScore += 100 * lanesForNote.length;
+  if (singlePlayer) maxPossibleScore += 100 * lanesForNote.length;
+}
+
+function spawnBeatmapNote(freq, change) {
+  if (!running) return;
+  let lanesForNote = [];
+  if (change === 1) {
+    lanesForNote = [lastLane];
+  } else if (change === 2) {
+    let newLane;
+    do {
+      newLane = Math.floor(Math.random() * lanes);
+    } while (newLane === lastLane);
+    lanesForNote = [newLane];
+    lastLane = newLane;
+  } else if (change === 3) {
+    // double: 2 random lanes
+    const available = [0, 1, 2, 3];
+    for (let i = 0; i < 2; i++) {
+      const idx = Math.floor(Math.random() * available.length);
+      lanesForNote.push(available.splice(idx, 1)[0]);
+    }
+  } else if (change === 4) {
+    // triple: 3 random lanes
+    const available = [0, 1, 2, 3];
+    for (let i = 0; i < 3; i++) {
+      const idx = Math.floor(Math.random() * available.length);
+      lanesForNote.push(available.splice(idx, 1)[0]);
+    }
+  }
+  const baseX = 0; // left side
+  const x = baseX + lanesForNote[0] * laneW + laneW / 2 - Math.floor(noteWidth / 2);
+  notes1.push({ x: x, y: -30, lanes: lanesForNote, side: 0, hit: false, freq: freq });
 }
 
 function gameUpdate(_, dt) {
@@ -164,21 +241,24 @@ function gameUpdate(_, dt) {
   // move notes
   [notes1, notes2].forEach(arr => { for (let i = arr.length - 1; i >= 0; i--) { arr[i].y += speed * s; if (arr[i].y > cfg.height + 50) arr.splice(i, 1); } });
 
-  // update simulated score2 for single player
   if (singlePlayer) {
-    score2 = Math.floor(0.9 * maxPossibleScore);
-  }
-
-  // comprobar ventaja sostenida
-  const diff = singlePlayer ? (score2 - score1) : Math.abs(score1 - score2);
-  if (diff > leadThreshold) {
-    leadTimer += dt;
-    if (leadTimer >= leadDuration) {
+    // check if beatmap finished and no notes left
+    if (beatmapIndex >= beatmap.length && notes1.length === 0) {
       endSong(scene);
       return;
     }
   } else {
-    leadTimer = 0;
+    // comprobar ventaja sostenida
+    const diff = Math.abs(score1 - score2);
+    if (diff > leadThreshold) {
+      leadTimer += dt;
+      if (leadTimer >= leadDuration) {
+        endSong(scene);
+        return;
+      }
+    } else {
+      leadTimer = 0;
+    }
   }
 
   draw();
@@ -266,10 +346,10 @@ function checkMultiHits(arr, side) {
   let toneFreq;
   if (closest.d <= 12) {
     points = 100 * n.lanes.length; // perfect
-    toneFreq = 880;
+    toneFreq = n.freq || 880;
   } else if (closest.d <= 30) {
     points = 80 * n.lanes.length; // normal
-    toneFreq = 660;
+    toneFreq = n.freq || 660;
   } else {
     points = 5 * n.lanes.length; // bad hit
     toneFreq = 220; // lower tone for error
@@ -281,17 +361,18 @@ function checkMultiHits(arr, side) {
   arr.splice(i, 1);
 }
 
-function checkHit(arr, lane, side) {
-  // removed, now using checkMultiHits
-}
-
 function endSong(s) {
   // evitar ejecutar dos veces
   if (!running) return;
   running = false; const overlay = s.add.graphics(); overlay.fillStyle(0x000000, 0.6); overlay.fillRect(0, 0, cfg.width, cfg.height);
-  const winner = singlePlayer ? (score1 >= score2 ? 'YOU WIN!' : 'GAME OVER') : (score1 === score2 ? 'TIE' : (score1 > score2 ? 'PLAYER 1 WINS' : 'PLAYER 2 WINS'));
+  const percentage = singlePlayer ? (score1 / totalPossibleScore) * 100 : 0;
+  const winner = singlePlayer ? (
+    percentage > 92 ? 'PERFECT CLEAR' :
+      percentage > 50 ? 'YOU WIN!' :
+        'YOU LOSE'
+  ) : (score1 === score2 ? 'TIE' : (score1 > score2 ? 'PLAYER 1 WINS' : 'PLAYER 2 WINS'));
   endText = s.add.text(cfg.width / 2, 270, winner, { font: '40px Arial', fill: '#ffffff' }).setOrigin(0.5);
-  const scoreText = singlePlayer ? 'Score: ' + score1 + ' / ' + score2 : 'P1: ' + score1 + '   P2: ' + score2;
+  const scoreText = singlePlayer ? 'Score: ' + score1 + ' / ' + totalPossibleScore + ' (' + percentage.toFixed(1) + '%)' : 'P1: ' + score1 + '   P2: ' + score2;
   s.add.text(cfg.width / 2, 330, scoreText, { font: '26px Arial', fill: '#ffd966' }).setOrigin(0.5);
   s.add.text(cfg.width / 2, 390, 'Press R to Restart', { font: '20px Arial', fill: '#99ff99' }).setOrigin(0.5);
   playToneForSide(0, 440, 0.2); playToneForSide(1, 330, 0.2);

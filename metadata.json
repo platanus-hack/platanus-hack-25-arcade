@@ -1,4 +1,5 @@
 {
   "game_name": "Duelo de ritmo: el juego para dos jugadores",
-  "description": "Juego rítmico para 2 jugadores: presiona A/S/D/F y H/J/K/L al ritmo de las notas. Gana quien mantenga 2000 puntos de ventaja durante 30 segundos."
+  "description": "Juego rítmico para 2 jugadores: presiona A/S/D/F y H/J/K/L al ritmo de las notas. Gana quien mantenga 2000 puntos de ventaja durante 30 segundos.",
+  "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 }
