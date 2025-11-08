@@ -400,6 +400,12 @@ let speed = 220;
 let jump = 300;
 let recoil = 240;
 let enemiesGroup;
+let powerUpsGroup;
+let powerUps = [];
+let jetpackActive = false;
+let jetpackEndTime = 0;
+let jetpackLeftBlock = null;
+let jetpackRightBlock = null;
 let debugHitboxes = false;
 let debugGraphics;
 // Combo system
@@ -446,6 +452,11 @@ const DIFFICULTY_COUNT_MULT_MAX = 1.8; // max multiplier for enemy count
 
 // Enemy Shield constants
 const SHIELDED_SPAWN_CHANCE = 0.08; // 8% chance
+
+// Power-Up constants
+const POWERUP_SPAWN_CHANCE = 0.20; // 20% chance on airborne kill
+const POWERUP_MAX_ACTIVE = 2; // max active power-ups
+const JETPACK_DURATION_MS = 8000; // 8s jetpack duration
 
 // ===== Enemy bullets (UPWARD TRAJECTORY) =====
 const ENEMY_BULLET_SPEED_Y = -360; // negativo = hacia arriba
@@ -508,6 +519,13 @@ function create() {
   // Clear runtime arrays
   platforms = [];
   bullets = [];
+  powerUps = [];
+  
+  // Reset jetpack state
+  jetpackActive = false;
+  jetpackEndTime = 0;
+  jetpackLeftBlock = null;
+  jetpackRightBlock = null;
 
   // ===== Downwell-like setup =====
   if (this.physics && this.physics.world) {
@@ -522,6 +540,9 @@ function create() {
 
   // *** Enemy bullets sin gravedad ***
   enemyBulletsGroup = this.physics.add.group({ allowGravity: false });
+  
+  // Power-Ups group
+  powerUpsGroup = this.physics.add.group({ allowGravity: false });
 
   // Safe starting platform
   const startWidth = 160;
@@ -572,6 +593,9 @@ function create() {
   setupHazards(this);
   this.physics.add.overlap(player, hazardsGroup, (_pl, _hz) => { if (hazardOn) endGame(this); });
   this.physics.add.overlap(player, enemiesGroup, (p, e) => { if (!gameOver) endGame(this); });
+  
+  // Power-Ups overlap
+  this.physics.add.overlap(player, powerUpsGroup, (p, powerUp) => onPowerUpCollected(this, powerUp));
 
   // Camera
   this.cameras.main.startFollow(player, false, 0.1, 0.1);
@@ -785,9 +809,32 @@ function update(_time, _delta) {
   }
 
   // Game over if player moves above the visible area (top-out)
-  if (player && player.y < cam.scrollY - 20) { endGame(this); return; }
+  if (player && player.y < cam.scrollY - 20) {
+    endGame(this);
+    return;
+  }
+  
+  // Cleanup power-ups by distance (not time)
+  powerUps = powerUps.filter(p => {
+    if (!p.active) return false;
+    if (p.y > cam.scrollY + 800 || p.y < cam.scrollY - 100) {
+      if (p.label && p.label.destroy) p.label.destroy();
+      p.destroy();
+      return false;
+    }
+    return true;
+  });
+  
+  // Update jetpack
+  if (jetpackActive) {
+    if (this.time.now >= jetpackEndTime) {
+      deactivateJetpack(this);
+    } else {
+      updateJetpackPosition();
+    }
+  }
 
-  // Hazards follow camera and toggle damage
+  // Hazards follow camera and toggle
   updateHazards(this);
   hazardTimer += _delta || 0;
   if (hazardTimer >= hazardInterval) {
@@ -840,6 +887,18 @@ function maybeRebaseWorld(scene) {
   if (enemyBulletsGroup) {
     enemyBulletsGroup.getChildren().forEach(b => { if (b && b.y != null) b.y -= dy; });
   }
+  // Power-Ups
+  if (powerUpsGroup) {
+    powerUpsGroup.getChildren().forEach(p => {
+      if (p && p.y != null) {
+        p.y -= dy;
+        if (p.label && p.label.y != null) p.label.y -= dy;
+      }
+    });
+  }
+  // Jetpack blocks
+  if (jetpackLeftBlock) jetpackLeftBlock.y -= dy;
+  if (jetpackRightBlock) jetpackRightBlock.y -= dy;
   // Hazards (static bodies)
   if (leftHazard) { leftHazard.y -= dy; if (leftHazard.body && leftHazard.body.updateFromGameObject) leftHazard.body.updateFromGameObject(); }
   if (rightHazard) { rightHazard.y -= dy; if (rightHazard.body && rightHazard.body.updateFromGameObject) rightHazard.body.updateFromGameObject(); }
@@ -853,6 +912,9 @@ function endGame(scene) {
   // Limpiar estado de carga
   if (isCharging) stopCharging(scene, false);
   stopChargeAudio(scene);
+  
+  // Limpiar jetpack
+  if (jetpackActive) deactivateJetpack(scene);
   
   // Restaurar time scale
   if (scene.physics && scene.physics.world) scene.physics.world.timeScale = 1.0;
@@ -996,6 +1058,8 @@ function fireBullet(scene) {
   const useBlue = comboCount > 0;
   const bulletColor = useBlue ? 0x00ffff : 0xff4444;
   const strokeColor = useBlue ? 0x88ffff : 0xff8888;
+  
+  // Fire from player center
   const b = scene.add.rectangle(player.x, player.y + 16, 6, 14, bulletColor);
   b.setStrokeStyle(1, strokeColor, 0.7);
   scene.physics.add.existing(b);
@@ -1006,6 +1070,34 @@ function fireBullet(scene) {
   b.body.setVelocityY(550);
   if (bulletsGroup) bulletsGroup.add(b);
   bullets.push(b);
+  
+  // If jetpack active, fire from side blocks too
+  if (jetpackActive && jetpackLeftBlock && jetpackRightBlock) {
+    // Left jetpack bullet
+    const bL = scene.add.rectangle(jetpackLeftBlock.x, jetpackLeftBlock.y + 10, 6, 14, bulletColor);
+    bL.setStrokeStyle(1, strokeColor, 0.7);
+    scene.physics.add.existing(bL);
+    if (bL.body && bL.body.setSize) bL.body.setSize(6, 14, true);
+    bL.body.setAllowGravity(false);
+    bL.body.enable = true;
+    bL.body.checkCollision.up = bL.body.checkCollision.down = bL.body.checkCollision.left = bL.body.checkCollision.right = true;
+    bL.body.setVelocityY(550);
+    if (bulletsGroup) bulletsGroup.add(bL);
+    bullets.push(bL);
+    
+    // Right jetpack bullet
+    const bR = scene.add.rectangle(jetpackRightBlock.x, jetpackRightBlock.y + 10, 6, 14, bulletColor);
+    bR.setStrokeStyle(1, strokeColor, 0.7);
+    scene.physics.add.existing(bR);
+    if (bR.body && bR.body.setSize) bR.body.setSize(6, 14, true);
+    bR.body.setAllowGravity(false);
+    bR.body.enable = true;
+    bR.body.checkCollision.up = bR.body.checkCollision.down = bR.body.checkCollision.left = bR.body.checkCollision.right = true;
+    bR.body.setVelocityY(550);
+    if (bulletsGroup) bulletsGroup.add(bR);
+    bullets.push(bR);
+  }
+  
   ammo -= 1;
   if (scene.ammoText) {
     scene.ammoText.setText('Ammo: ' + ammo);
@@ -1252,6 +1344,123 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
     }
     if (scoreText) scoreText.setText('Score: ' + score);
     enemy.destroy();
+    
+    // Spawn power-up on airborne kills
+    if (isAirborne && Math.random() < POWERUP_SPAWN_CHANCE && powerUps.length < POWERUP_MAX_ACTIVE) {
+      spawnPowerUp(scene, enemy.x, enemy.y - 40);
+    }
+  }
+}
+
+function spawnPowerUp(scene, x, y) {
+  if (!powerUpsGroup) return;
+  // Larger power-up box with jetpack visual
+  const powerUp = scene.add.rectangle(x, y, 20, 20, 0xff9900, 0.9);
+  powerUp.setStrokeStyle(3, 0xffcc00, 1);
+  
+  // Add text emoji/label for jetpack
+  const label = scene.add.text(x, y, '🚀', {
+    fontSize: '16px',
+    align: 'center'
+  }).setOrigin(0.5);
+  label.setDepth(1500);
+  powerUp.label = label;
+  
+  scene.physics.add.existing(powerUp);
+  powerUp.body.setAllowGravity(false);
+  if (powerUpsGroup) powerUpsGroup.add(powerUp);
+  powerUps.push(powerUp);
+  
+  // Pulse animation (no despawn by time)
+  scene.tweens.add({
+    targets: [powerUp, label],
+    scale: { from: 0.9, to: 1.1 },
+    duration: 500,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+  
+  // Slow rotation
+  scene.tweens.add({
+    targets: powerUp,
+    angle: 360,
+    duration: 3000,
+    repeat: -1,
+    ease: 'Linear'
+  });
+}
+
+function onPowerUpCollected(scene, powerUp) {
+  if (!powerUp || !powerUp.active) return;
+  
+  // Activate Jetpack
+  activateJetpack(scene);
+  
+  // Particle burst
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const p = scene.add.rectangle(powerUp.x, powerUp.y, 4, 4, 0xff9900);
+    scene.physics.add.existing(p);
+    p.body.setVelocity(Math.cos(angle) * 150, Math.sin(angle) * 150);
+    p.body.setGravity(0, 0);
+    scene.tweens.add({ targets: p, alpha: 0, scale: 0, duration: 400, onComplete: () => p.destroy() });
+  }
+  
+  // Audio power-up sound
+  playTone(scene, 880, 0.1);
+  playTone(scene, 1100, 0.1);
+  
+  // Destroy power-up and label
+  if (powerUp.label && powerUp.label.destroy) powerUp.label.destroy();
+  powerUp.destroy();
+  powerUps = powerUps.filter(p => p !== powerUp);
+}
+
+function activateJetpack(scene) {
+  jetpackActive = true;
+  jetpackEndTime = scene.time.now + JETPACK_DURATION_MS;
+  
+  // Create jetpack visual blocks (left and right)
+  const offsetX = 14;
+  jetpackLeftBlock = scene.add.rectangle(player.x - offsetX, player.y, 8, 16, 0x888888);
+  jetpackLeftBlock.setStrokeStyle(1, 0xaaaaaa, 0.8);
+  jetpackLeftBlock.setDepth(player.depth - 1);
+  
+  jetpackRightBlock = scene.add.rectangle(player.x + offsetX, player.y, 8, 16, 0x888888);
+  jetpackRightBlock.setStrokeStyle(1, 0xaaaaaa, 0.8);
+  jetpackRightBlock.setDepth(player.depth - 1);
+  
+  // Flame effect pulse
+  scene.tweens.add({
+    targets: [jetpackLeftBlock, jetpackRightBlock],
+    alpha: { from: 1, to: 0.6 },
+    duration: 150,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+  
+  playTone(scene, 660, 0.15);
+}
+
+function deactivateJetpack(scene) {
+  jetpackActive = false;
+  if (jetpackLeftBlock) { jetpackLeftBlock.destroy(); jetpackLeftBlock = null; }
+  if (jetpackRightBlock) { jetpackRightBlock.destroy(); jetpackRightBlock = null; }
+  playTone(scene, 440, 0.1);
+}
+
+function updateJetpackPosition() {
+  if (!jetpackActive || !player) return;
+  const offsetX = 14;
+  if (jetpackLeftBlock) {
+    jetpackLeftBlock.x = player.x - offsetX;
+    jetpackLeftBlock.y = player.y;
+  }
+  if (jetpackRightBlock) {
+    jetpackRightBlock.x = player.x + offsetX;
+    jetpackRightBlock.y = player.y;
   }
 }
 
