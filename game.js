@@ -1684,6 +1684,9 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
 
   // Enemy death & scoring/combo rules
   if (enemy && enemy.active) {
+    // Preserve properties needed after destroy
+    const wasShielded = !!enemy.shielded;
+    const ex = enemy.x; const ey = enemy.y;
     // death particles
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
@@ -1777,10 +1780,17 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
     if (scoreText) scoreText.setText('Score: ' + score);
     enemy.destroy();
 
-    // Spawn power-up on airborne kills (only if jetpack not active)
+    // Guaranteed Jetpack drop for shielded enemies, unless player already has jetpack
+    let spawnedPU = false;
+    if (wasShielded && !jetpackActive) {
+      spawnPowerUp(scene, ex, ey - 40);
+      spawnedPU = true;
+    }
+
+    // Spawn power-up on airborne kills (only if jetpack not active and none spawned yet)
     const isAirborneAfter = player && player.body && !player.body.blocked.down;
-    if (isAirborneAfter && !jetpackActive && Math.random() < POWERUP_SPAWN_CHANCE && powerUps.length < POWERUP_MAX_ACTIVE) {
-      spawnPowerUp(scene, enemy.x, enemy.y - 40);
+    if (!spawnedPU && isAirborneAfter && !jetpackActive && false && Math.random() < POWERUP_SPAWN_CHANCE && powerUps.length < POWERUP_MAX_ACTIVE) {
+      spawnPowerUp(scene, ex, ey - 40);
     }
   }
 }
