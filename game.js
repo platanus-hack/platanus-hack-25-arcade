@@ -1,5 +1,4 @@
 // Platanus Hack 25: CHAINFALL
-
 // Arcade mapping: P1L/R (move), P1U (jump), P1A (shoot), P1B (ray gun), START1 (restart)
 
 const ARCADE_CONTROLS = {
@@ -24,31 +23,47 @@ for (const [arcadeCode, keyboardKeys] of Object.entries(ARCADE_CONTROLS)) {
   }
 }
 
-// Scenes registry
+// ======== SAFE HELPERS (avoid destroyed group crashes) ========
+function safeChildren(group) {
+  if (!group || !group.children || !Array.isArray(group.children.entries)) return [];
+  return group.children.entries;
+}
+function safeEach(group, fn) {
+  const list = safeChildren(group);
+  for (let i = 0; i < list.length; i++) {
+    const child = list[i];
+    if (child) fn(child);
+  }
+}
+
+// ===== Scenes registry =====
 const GameScene = { key: 'game', create: create, update: update };
 const MenuScene = { key: 'menu', create: menuCreate, update: menuUpdate };
 
 let currentShootKey = 'e';
 let currentRayKey = 'i';
+let selectedMode = 'challenger'; // 'normal' or 'challenger'
 
+// ======================= MENU SCENE ==========================
 function menuCreate() {
   const s = this;
   s.cameras.main.setBackgroundColor('#000000');
-  
+
   // Initialize overlay visibility flags
   s.instructionsVisible = false;
   s.controlsVisible = false;
+  s.modeVisible = false;
 
   // Stylish animated title
   const titleText = s.add.text(400, 130, 'CHAINFALL', {
-    fontSize: '72px', 
-    fontFamily: 'Arial, sans-serif', 
-    color: '#ffffff', 
+    fontSize: '72px',
+    fontFamily: 'Arial, sans-serif',
+    color: '#ffffff',
     align: 'center',
     stroke: '#00ffff',
     strokeThickness: 4
   }).setOrigin(0.5);
-  
+
   // Title pulsing animation
   s.tweens.add({
     targets: titleText,
@@ -58,7 +73,7 @@ function menuCreate() {
     repeat: -1,
     ease: 'Sine.easeInOut'
   });
-  
+
   // Subtitle
   const subtitleText = s.add.text(400, 200, 'Chain your combos as you fall', {
     fontSize: '20px',
@@ -72,15 +87,13 @@ function menuCreate() {
   s.menuItems = [];
   s.menuBorders = [];
   const mkBtn = (y, label, onClick) => {
-    // Button background/border
     const border = s.add.rectangle(400, y, 280, 50, 0x001a1a, 0.5);
     border.setStrokeStyle(2, 0x00ffff, 0.8);
     s.menuBorders.push(border);
-    
-    // Button text
+
     const t = s.add.text(400, y, label, {
-      fontSize: '32px', 
-      fontFamily: 'Arial, sans-serif', 
+      fontSize: '32px',
+      fontFamily: 'Arial, sans-serif',
       color: '#00ffff',
       stroke: '#000000',
       strokeThickness: 2
@@ -90,44 +103,30 @@ function menuCreate() {
     s.menuItems.push(t);
     return t;
   };
-  s.btnStart = mkBtn(260, 'Start Game', () => s.scene.start('game'));
+  s.btnStart = mkBtn(260, 'Start Game', () => showModeSelect(s));
   s.btnInstr = mkBtn(330, 'Instructions', () => showInstructions(s));
   s.btnExit  = mkBtn(400, 'Controls', () => showControls(s));
   s.menuIndex = 0; updateMenuVisuals(s);
 
-  s.input.keyboard.on('keydown', (ev) => {
-    const key = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
-    if (s.instructionsVisible || s.controlsVisible) { return; }
-    if (key === 'P1U') { s.menuIndex = (s.menuIndex + s.menuItems.length - 1) % s.menuItems.length; updateMenuVisuals(s); }
-    else if (key === 'P1D') { s.menuIndex = (s.menuIndex + 1) % s.menuItems.length; updateMenuVisuals(s); }
-    else if (key === 'P1A') {
-      const actions = [() => s.scene.start('game'), () => showInstructions(s), () => showControls(s)];
-      actions[s.menuIndex]();
-    }
-  });
-
-  // Instructions overlay (hidden by default) - visual with images
+  // ===== Instructions overlay (hidden by default) =====
   s.instructionsGroup = s.add.group();
   const iOv = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.86);
   const iT = s.add.text(400, 140, 'Instructions', { fontSize: '40px', fontFamily: 'Arial, sans-serif', color: '#ffff00' }).setOrigin(0.5);
-  
-  // Back button with border
+
   const iBackBorder = s.add.rectangle(400, 520, 180, 50, 0x003300, 0.6);
   iBackBorder.setStrokeStyle(2, 0x00ff00, 0.8);
-  const iBack = s.add.text(400, 520, 'Back', { 
-    fontSize: '28px', 
-    fontFamily: 'Arial, sans-serif', 
+  const iBack = s.add.text(400, 520, 'Back', {
+    fontSize: '28px',
+    fontFamily: 'Arial, sans-serif',
     color: '#00ff00',
     stroke: '#000000',
     strokeThickness: 3
   }).setOrigin(0.5).setInteractive({ useHandCursor: true });
   iBack.on('pointerdown', () => hideInstructions(s));
 
-  // Graphics helper
   const g = s.add.graphics();
   g.lineStyle(2, 0x00ffff, 1);
 
-  // Section: Move / Jump (left)
   const moveTitle = s.add.text(140, 200, 'MOVE / JUMP', { fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#ffffff' }).setOrigin(0.5);
   const keyA = s.add.rectangle(110, 240, 34, 34, 0x111111);
   const keyD = s.add.rectangle(170, 240, 34, 34, 0x111111);
@@ -135,31 +134,24 @@ function menuCreate() {
   const txtA = s.add.text(110, 240, 'A', { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#00ffff' }).setOrigin(0.5);
   const txtD = s.add.text(170, 240, 'D', { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#00ffff' }).setOrigin(0.5);
   const txtW = s.add.text(140, 190, 'W', { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#00ffff' }).setOrigin(0.5);
-  // Arrows left/right
   g.fillStyle(0x00ffff, 1);
   g.fillTriangle(90, 240, 100, 232, 100, 248);
   g.fillTriangle(190, 240, 180, 232, 180, 248);
-  // Up arrow for jump
   g.fillTriangle(140, 170, 132, 180, 148, 180);
 
   const enemyYValue = 346;
 
-  // Section: Shooting (center)
   const centerTitle = s.add.text(400, 200, 'SHOOT DOWN', { fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#ffffff' }).setOrigin(0.5);
   const plat = s.add.rectangle(400, 360, 160, 12, 0x00aaff);
   const pRect = s.add.rectangle(400, enemyYValue - 12 - 22 - 66, 18, 24, 0xffffff);
-  // Red bullets going downward (airborne, above platform)
   const bullet = s.add.rectangle(400, enemyYValue - 12 - 22, 6, 14, 0xff4444);
   const bullet2 = s.add.rectangle(400, enemyYValue - 12 - 22 - 26, 6, 14, 0xff4444);
-  // Red enemy target
   const enemy1 = s.add.rectangle(400, enemyYValue, 30, 16, 0xff2222);
-  // Bullet arrow
   g.fillStyle(0xff4444, 1);
   g.fillTriangle(400, 390, 392, 378, 408, 378);
   const shootTxt = s.add.text(400, 420, 'Press ' + currentShootKey.toUpperCase() + ' to shoot down (in air)', { fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#dddddd' }).setOrigin(0.5);
   const landTxt = s.add.text(400, 444, 'Landing reloads to max ammo', { fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#aaaaaa' }).setOrigin(0.5);
 
-  // Section: Combo (right)
   const comboTitle = s.add.text(660, 200, 'COMBO', { fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#ffffff' }).setOrigin(0.5);
   const comboPlat = s.add.rectangle(660, 360, 160, 12, 0x00aaff);
   const comboPlayer = s.add.rectangle(660, enemyYValue - 12 - 22 - 66, 18, 24, 0xffffff);
@@ -180,30 +172,25 @@ function menuCreate() {
   ]);
   s.instrItems = [iBack];
   s.instrBorders = [iBackBorder];
-  s.instrIndex = 0;
-  updateInstrVisuals(s);
-  hideInstructions(s);
+  s.instrIndex = 0; updateInstrVisuals(s); hideInstructions(s);
 
   // Panel key handling: Instructions
   s.input.keyboard.on('keydown', (ev) => {
     if (!s.instructionsVisible) return;
-    if (s.instructionsJustOpened) return; // Prevent immediate close
+    if (s.instructionsJustOpened) return;
     const raw = ev.key;
     const key = KEYBOARD_TO_ARCADE[raw] || raw;
     if (raw === 'Escape' || key === 'P1B') { hideInstructions(s); return; }
-    if (key === 'P1U' || key === 'P1D' || key === 'P1L' || key === 'P1R') {
-      s.instrIndex = 0; updateInstrVisuals(s); return;
-    }
+    if (key === 'P1U' || key === 'P1D' || key === 'P1L' || key === 'P1R') { s.instrIndex = 0; updateInstrVisuals(s); return; }
     if (key === 'P1A') { hideInstructions(s); }
   });
 
-  // Controls overlay (hidden by default)
+  // ===== Controls overlay (hidden by default) =====
   s.controlsGroup = s.add.group();
   const cOv = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.86);
   const cT = s.add.text(400, 150, 'Controls', { fontSize: '40px', fontFamily: 'Arial, sans-serif', color: '#ffff00' }).setOrigin(0.5);
-  s.controlsInfo = s.add.text(400, 200,'Select an item and press a key to rebind',{ fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#dddddd', align: 'center' }).setOrigin(0.5);
+  s.controlsInfo = s.add.text(400, 200, 'Select an item and press a key to rebind', { fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#dddddd', align: 'center' }).setOrigin(0.5);
 
-  // Normal Shoot row
   const cShootBorder = s.add.rectangle(400, 270, 360, 46, 0x001a1a, 0.5);
   cShootBorder.setStrokeStyle(2, 0x00ffff, 0.8);
   const cShoot = s.add.text(400, 270, 'Normal Shoot: ' + currentShootKey.toUpperCase(), {
@@ -211,7 +198,6 @@ function menuCreate() {
   }).setOrigin(0.5).setInteractive({ useHandCursor: true });
   cShoot.on('pointerover', () => { s.controlsIndex = 0; updateControlsVisuals(s); });
 
-  // Ray Gun row
   const cRayBorder = s.add.rectangle(400, 330, 360, 46, 0x1a1a00, 0.5);
   cRayBorder.setStrokeStyle(2, 0xEEF527, 0.8);
   const cRay = s.add.text(400, 330, 'Ray Gun: ' + currentRayKey.toUpperCase(), {
@@ -219,12 +205,11 @@ function menuCreate() {
   }).setOrigin(0.5).setInteractive({ useHandCursor: true });
   cRay.on('pointerover', () => { s.controlsIndex = 1; updateControlsVisuals(s); });
 
-  // Back button with border
   const cBackBorder = s.add.rectangle(400, 420, 180, 50, 0x003300, 0.6);
   cBackBorder.setStrokeStyle(2, 0x00ff00, 0.8);
-  const cBack = s.add.text(400, 420, 'Back', { 
-    fontSize: '28px', 
-    fontFamily: 'Arial, sans-serif', 
+  const cBack = s.add.text(400, 420, 'Back', {
+    fontSize: '28px',
+    fontFamily: 'Arial, sans-serif',
     color: '#00ff00',
     stroke: '#000000',
     strokeThickness: 3
@@ -235,30 +220,21 @@ function menuCreate() {
   s.controlsGroup.addMultiple([cOv, cT, s.controlsInfo, cShootBorder, cShoot, cRayBorder, cRay, cBackBorder, cBack]);
   s.controlsItems = [cShoot, cRay, cBack];
   s.controlsBorders = [cShootBorder, cRayBorder, cBackBorder];
-  s.controlsIndex = 0;
-  updateControlsVisuals(s);
-  hideControls(s);
+  s.controlsIndex = 0; updateControlsVisuals(s); hideControls(s);
 
-  // Panel key handling: Controls
+  // Mode Select overlay (hidden by default)
+  buildModeSelectOverlay(s);
+  hideModeSelect(s);
+
+  // Menu navigation keys (disabled when overlays are open)
   s.input.keyboard.on('keydown', (ev) => {
-    if (!s.controlsVisible) return;
-    if (s.controlsJustOpened) return;
-    const raw = ev.key;
-    const key = KEYBOARD_TO_ARCADE[raw] || raw;
-    if (raw === 'Escape' || key === 'P1B') { hideControls(s); return; }
-    if (key === 'P1U') { s.controlsIndex = (s.controlsIndex + s.controlsItems.length - 1) % s.controlsItems.length; updateControlsVisuals(s); return; }
-    if (key === 'P1D') { s.controlsIndex = (s.controlsIndex + 1) % s.controlsItems.length; updateControlsVisuals(s); return; }
-    if (key === 'P1A' && s.controlsIndex === 2) { hideControls(s); return; }
-    if (raw && raw.length === 1) {
-      const k = raw.toLowerCase();
-      if (s.controlsIndex === 0) {
-        rebindShootKey(k);
-        if (s.controlsItems[0] && s.controlsItems[0].setText) s.controlsItems[0].setText('Normal Shoot: ' + currentShootKey.toUpperCase());
-      } else if (s.controlsIndex === 1) {
-        rebindRayKey(k);
-        if (s.controlsItems[1] && s.controlsItems[1].setText) s.controlsItems[1].setText('Ray Gun: ' + currentRayKey.toUpperCase());
-      }
-      return;
+    const key = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
+    if (s.instructionsVisible || s.controlsVisible || s.modeVisible) return;
+    if (key === 'P1U') { s.menuIndex = (s.menuIndex + s.menuItems.length - 1) % s.menuItems.length; updateMenuVisuals(s); }
+    else if (key === 'P1D') { s.menuIndex = (s.menuIndex + 1) % s.menuItems.length; updateMenuVisuals(s); }
+    else if (key === 'P1A') {
+      const actions = [() => showModeSelect(s), () => showInstructions(s), () => showControls(s)];
+      actions[s.menuIndex]();
     }
   });
 }
@@ -279,6 +255,7 @@ function updateMenuVisuals(s) {
   });
 }
 
+// ===== Instructions / Controls visuals =====
 function updateInstrVisuals(s) {
   if (!s.instrItems) return;
   s.instrItems.forEach((t, i) => {
@@ -294,7 +271,6 @@ function updateInstrVisuals(s) {
     }
   });
 }
-
 function updateControlsVisuals(s) {
   if (!s.controlsItems) return;
   s.controlsItems.forEach((t, i) => {
@@ -310,32 +286,158 @@ function updateControlsVisuals(s) {
     }
   });
 }
-
-function showInstructions(s) { 
-  s.instructionsVisible = true; 
-  s.instructionsGroup.setVisible(true); 
-  s.instrIndex = 0; 
+function showInstructions(s) {
+  s.instructionsVisible = true;
+  s.instructionsGroup.setVisible(true);
+  s.instrIndex = 0;
   updateInstrVisuals(s);
   s.instructionsJustOpened = true;
   setTimeout(() => { s.instructionsJustOpened = false; }, 50);
 }
-function hideInstructions(s) { 
-  s.instructionsVisible = false; 
-  s.instructionsGroup.setVisible(false); 
+function hideInstructions(s) {
+  s.instructionsVisible = false;
+  s.instructionsGroup.setVisible(false);
 }
-function showControls(s) { 
-  s.controlsVisible = true; 
-  s.controlsGroup.setVisible(true); 
-  s.controlsIndex = 0; 
+function showControls(s) {
+  s.controlsVisible = true;
+  s.controlsGroup.setVisible(true);
+  s.controlsIndex = 0;
   updateControlsVisuals(s);
   s.controlsJustOpened = true;
   setTimeout(() => { s.controlsJustOpened = false; }, 50);
 }
-function hideControls(s) { 
-  s.controlsVisible = false; 
-  s.controlsGroup.setVisible(false); 
+function hideControls(s) {
+  s.controlsVisible = false;
+  s.controlsGroup.setVisible(false);
 }
 
+// ===== Mode Select overlay =====
+function buildModeSelectOverlay(s) {
+  s.modeGroup = s.add.group();
+
+  const overlay = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.86);
+  const title = s.add.text(400, 110, 'SELECT MODE', {
+    fontSize: '44px', fontFamily: 'Arial, sans-serif', color: '#ffff00', stroke: '#000000', strokeThickness: 4
+  }).setOrigin(0.5);
+
+  const help = s.add.text(400, 160, `Use A/D to choose • Press ${currentShootKey.toUpperCase()} to confirm • ${currentRayKey.toUpperCase()} to cancel`, {
+    fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#dddddd'
+  }).setOrigin(0.5);
+
+  const enemyYValue = 346;
+
+  // Cards
+  s.modeIndex = 0;
+  const cardW = 300; const cardH = 300;
+
+  // Normal card
+  const nCardBorder = s.add.rectangle(250, 330, cardW, cardH, 0x001a1a, 0.55);
+  nCardBorder.setStrokeStyle(2, 0x00ffff, 0.8);
+
+  const nTitle = s.add.text(250, 210, 'NORMAL', {
+    fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#00ffff', stroke: '#000000', strokeThickness: 2
+  }).setOrigin(0.5);
+
+  const nDesc = s.add.text(250, 250, 'Ammo refills to MAX on any kill by bullet.', {
+    fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#dddddd', align: 'center', wordWrap: { width: 260 }
+  }).setOrigin(0.5);
+
+  // Normal illustration
+  const nG = s.add.graphics();
+  nG.lineStyle(2, 0x00ffff, 1);
+  const nPlat = s.add.rectangle(250, 360, 160, 12, 0x00aaff);
+  const nPlayer = s.add.rectangle(250, 300, 18, 24, 0xffffff);
+  const nEnemy = s.add.rectangle(250, enemyYValue, 30, 16, 0xff2222);
+  const nBullet = s.add.rectangle(250, enemyYValue - 22, 6, 14, 0xff4444);
+  const nHint = s.add.text(250, 420, `Press ${currentShootKey.toUpperCase()} to pick`, {
+    fontSize: '14px', fontFamily: 'Arial, sans-serif', color: '#aaaaaa'
+  }).setOrigin(0.5);
+
+  // Challenger card
+  const cCardBorder = s.add.rectangle(550, 330, cardW, cardH, 0x1a1a00, 0.55);
+  cCardBorder.setStrokeStyle(2, 0xEEF527, 0.8);
+
+  const cTitle = s.add.text(550, 210, 'CHALLENGER', {
+    fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#EEF527', stroke: '#000000', strokeThickness: 2
+  }).setOrigin(0.5);
+
+  const cDesc = s.add.text(550, 250,
+    'Gain +1 ammo on any kill by bullet.',
+    {
+      fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#dddddd', align: 'center', wordWrap: { width: 260 }
+    }).setOrigin(0.5);
+
+  const cG = s.add.graphics();
+  cG.lineStyle(2, 0xEEF527, 1);
+  const cPlat = s.add.rectangle(550, 360, 160, 12, 0x00aaff);
+  const cPlayer = s.add.rectangle(550, 300, 18, 24, 0xffffff);
+  const cEnemy = s.add.rectangle(550, enemyYValue, 30, 16, 0xff2222);
+  const cBullet = s.add.rectangle(550, enemyYValue - 22, 6, 14, 0x00ffff);
+  const cHint = s.add.text(550, 420, `Press ${currentShootKey.toUpperCase()} to pick`, {
+    fontSize: '14px', fontFamily: 'Arial, sans-serif', color: '#aaaaaa'
+  }).setOrigin(0.5);
+
+  // Add to group
+  s.modeGroup.addMultiple([
+    overlay, title, help,
+    nCardBorder, nTitle, nDesc, nG, nPlat, nPlayer, nEnemy, nBullet, nHint,
+    cCardBorder, cTitle, cDesc, cG, cPlat, cPlayer, cEnemy, cBullet, cHint
+  ]);
+
+  // Input for Mode Select
+  s.input.keyboard.on('keydown', (ev) => {
+    if (!s.modeVisible) return;
+    const raw = ev.key;
+    const key = KEYBOARD_TO_ARCADE[raw] || raw;
+    if (key === 'P1L') { s.modeIndex = 0; updateModeVisuals(); }
+    else if (key === 'P1R') { s.modeIndex = 1; updateModeVisuals(); }
+    else if (key === 'P1A') { confirmMode(); }
+    else if (key === 'P1B' || raw === 'Escape') { hideModeSelect(s); }
+  });
+
+  // Click handlers on cards
+  [nCardBorder, nTitle, nDesc, nPlat, nPlayer, nEnemy, nBullet, nG].forEach(obj => {
+    obj.setInteractive({ useHandCursor: true }).on('pointerdown', () => { s.modeIndex = 0; updateModeVisuals(); confirmMode(); });
+    obj.on('pointerover', () => { s.modeIndex = 0; updateModeVisuals(); });
+  });
+  [cCardBorder, cTitle, cDesc, cPlat, cPlayer, cEnemy, cBullet, cG].forEach(obj => {
+    obj.setInteractive({ useHandCursor: true }).on('pointerdown', () => { s.modeIndex = 1; updateModeVisuals(); confirmMode(); });
+    obj.on('pointerover', () => { s.modeIndex = 1; updateModeVisuals(); });
+  });
+
+  function updateModeVisuals() {
+    const leftSel = s.modeIndex === 0;
+    nCardBorder.setScale(leftSel ? 1.06 : 1);
+    nCardBorder.setStrokeStyle(leftSel ? 3 : 2, 0xffffff, leftSel ? 1 : 0.8);
+    nTitle.setColor(leftSel ? '#ffffff' : '#00ffff');
+
+    const rightSel = s.modeIndex === 1;
+    cCardBorder.setScale(rightSel ? 1.06 : 1);
+    cCardBorder.setStrokeStyle(rightSel ? 3 : 2, 0xffffff, rightSel ? 1 : 0.8);
+    cTitle.setColor(rightSel ? '#ffffff' : '#EEF527');
+  }
+
+  function confirmMode() {
+    selectedMode = s.modeIndex === 0 ? 'normal' : 'challenger';
+    hideModeSelect(s);
+    s.scene.start('game', { mode: selectedMode });
+  }
+
+  s.updateModeVisuals = updateModeVisuals;
+}
+
+function showModeSelect(s) {
+  s.modeVisible = true;
+  s.modeGroup.setVisible(true);
+  s.modeIndex = 0;
+  if (s.updateModeVisuals) s.updateModeVisuals();
+}
+function hideModeSelect(s) {
+  s.modeVisible = false;
+  s.modeGroup.setVisible(false);
+}
+
+// ===== Rebinding helpers =====
 function rebindShootKey(newKey) {
   const k = (newKey || '').toLowerCase();
   if (!/^[a-z]$/.test(k)) return;
@@ -348,7 +450,6 @@ function rebindShootKey(newKey) {
   ARCADE_CONTROLS['P1A'] = [k];
   KEYBOARD_TO_ARCADE[k] = 'P1A';
 }
-
 function rebindRayKey(newKey) {
   const k = (newKey || '').toLowerCase();
   if (!/^[a-z]$/.test(k)) return;
@@ -362,6 +463,7 @@ function rebindRayKey(newKey) {
   KEYBOARD_TO_ARCADE[k] = 'P1B';
 }
 
+// ======================= GAME SCENE ==========================
 const config = {
   type: Phaser.AUTO,
   width: 800,
@@ -370,7 +472,6 @@ const config = {
   physics: { default: 'arcade', arcade: { gravity: { y: 900 }, debug: false } },
   scene: [MenuScene, GameScene]
 };
-
 const game = new Phaser.Game(config);
 
 // Game variables
@@ -378,7 +479,7 @@ let score = 0;
 let scoreText;
 let gameOver = false;
 
-// Downwell-like variables (M0 prototype)
+// Downwell-like variables
 let player;
 let platforms = [];
 let bullets = [];
@@ -414,7 +515,7 @@ let comboCount = 0;
 let comboMultiplier = 1;
 let comboText;
 
-// String constants for minification
+// String constants
 const FONT = 'Arial, sans-serif';
 const C_BLACK = '#000000';
 const C_WHITE = '#ffffff';
@@ -447,81 +548,84 @@ const SHOOTER_COOLDOWN_MIN_MS = 1200;
 const SHOOTER_COOLDOWN_MAX_MS = 1800;
 
 // Dynamic Difficulty constants
-const DIFFICULTY_DEPTH_STEP = 1000; // every 1000px increases difficulty
-const DIFFICULTY_SPAWN_MULT_MAX = 2.5; // max multiplier for special enemy spawn
-const DIFFICULTY_COUNT_MULT_MAX = 1.8; // max multiplier for enemy count
+const DIFFICULTY_DEPTH_STEP = 1000;
+const DIFFICULTY_SPAWN_MULT_MAX = 2.5;
+const DIFFICULTY_COUNT_MULT_MAX = 1.8;
 
 // Enemy Shield constants
-const SHIELDED_SPAWN_CHANCE = 0.08; // 8% chance
+const SHIELDED_SPAWN_CHANCE = 0.08;
 
 // Power-Up constants
-const POWERUP_SPAWN_CHANCE = 0.20; // 20% chance on airborne kill
-const POWERUP_MAX_ACTIVE = 2; // max active power-ups
-const INVULNERABILITY_DURATION_MS = 1500; // 1.5s invulnerability after losing jetpack
+const POWERUP_SPAWN_CHANCE = 0.20;
+const POWERUP_MAX_ACTIVE = 2;
+const INVULNERABILITY_DURATION_MS = 1500;
 
 // ===== Enemy bullets (UPWARD TRAJECTORY) =====
-const ENEMY_BULLET_SPEED_Y = -360; // negativo = hacia arriba
+const ENEMY_BULLET_SPEED_Y = -360;
 
 // ===== Scoring per enemy type =====
-const SCORE_WALKER = 50;      // red rectangle (normal)
-const SCORE_JUMPER = 60;      // jumper (green)
-const SCORE_SHOOTER = 80;     // shooterUp (magenta)
-const SHIELD_SCORE_MULT = 1.5; // shield is a modifier, not a type
+const SCORE_WALKER = 50;
+const SCORE_JUMPER = 60;
+const SCORE_SHOOTER = 80;
+const SHIELD_SCORE_MULT = 1.5;
 
 // ===== Ray Gun (Charge Shot) constants =====
-const CHARGE_THRESHOLD_MS = 1000;          // tiempo requerido para cargar
-const CHARGE_COST_AMMO = 2;                // munición requerida
-const CHARGE_PIERCE_COUNT = 2;             // enemigos que atraviesa el rayo
-const CHARGE_SLOWMO_SCALE = 3.33;          // >1 = más lento (ej: 3.33 ≈ 30% de velocidad)
-const CHARGE_RAY_MAX_DISTANCE = 2000;      // distancia máxima del rayo
-const CHARGE_RAY_VISUAL_DURATION = 200;    // duración visual del rayo
-const CHARGE_RAMP_IN_MS = 150;             // si deseas ramp, puedes re-implementarlo
+const CHARGE_THRESHOLD_MS = 1000;
+const CHARGE_COST_AMMO = 2;
+const CHARGE_PIERCE_COUNT = 2;
+const CHARGE_SLOWMO_SCALE = 3.33;
+const CHARGE_RAY_MAX_DISTANCE = 2000;
+const CHARGE_RAY_VISUAL_DURATION = 200;
+const CHARGE_RAMP_IN_MS = 150;
 const CHARGE_RAMP_OUT_MS = 180;
 
 // ======== AUDIO DINÁMICO PARA CHARGE ========
-const CHARGE_AUDIO_MIN_HZ = 440;           // inicio del sweep
-const CHARGE_AUDIO_MAX_HZ = 900;           // fin del sweep
+const CHARGE_AUDIO_MIN_HZ = 440;
+const CHARGE_AUDIO_MAX_HZ = 900;
 let chargeOsc = null;
 let chargeGain = null;
 let chargeAudioCompleted = false;
 
-function create() {
+function create(data) {
   const scene = this;
+
+  // Save selected mode from menu
+  selectedMode = (data && data.mode) ? data.mode : (selectedMode || 'challenger');
+
   // CHAINFALL scene init tone
   playTone(this, 440, 0.1);
-  
-  // MUSIC (opcional)
-  // playBackgroundMusic(this);
 
-  // Reset core state on scene start
+  // Reset world/time
   if (this.physics && this.physics.world && this.physics.world.isPaused) this.physics.world.resume();
   if (this.physics && this.physics.world) this.physics.world.timeScale = 1.0;
-  
+
+  // Reset core state
   gameOver = false;
   score = 0;
   maxDepth = 0;
+  if (selectedMode === 'normal') maxAmmo = 10;
   ammo = maxAmmo;
   wasOnGround = false;
   keysState.left = keysState.right = false;
   hazardOn = true;
   hazardTimer = 0;
-  
+
   // Reset charge shot state
   isCharging = false;
   chargeStartTime = 0;
   chargeVisuals = null;
   chargeAudioCompleted = false;
-  stopChargeAudio(this); // asegurar que no haya audio residual
-  
+  stopChargeAudio(this);
+
   // Reset combo state
   comboCount = 0;
   comboMultiplier = 1;
-  
+
   // Clear runtime arrays
   platforms = [];
   bullets = [];
   powerUps = [];
-  
+
   // Reset jetpack state
   jetpackActive = false;
   jetpackLeftBlock = null;
@@ -539,11 +643,7 @@ function create() {
   bulletsGroup = this.physics.add.group();
   hazardsGroup = this.physics.add.staticGroup();
   enemiesGroup = this.physics.add.group();
-
-  // *** Enemy bullets sin gravedad ***
   enemyBulletsGroup = this.physics.add.group({ allowGravity: false });
-  
-  // Power-Ups group
   powerUpsGroup = this.physics.add.group({ allowGravity: false });
 
   // Safe starting platform
@@ -576,22 +676,15 @@ function create() {
   // Seed platforms
   seedPlatforms(this, 220, this.cameras.main.scrollY + 800);
 
-  // Colliders
+  // Colliders & overlaps
   this.physics.add.collider(player, platformsGroup);
   this.physics.add.collider(bulletsGroup, platformsGroup, (b, _p) => { if (b && b.destroy) b.destroy(); });
   this.physics.add.overlap(bulletsGroup, enemiesGroup, (b, e) => onBulletHitsEnemy(this, b, e));
-  this.physics.add.overlap(enemyBulletsGroup, player, (obj1, obj2) => {
-    // Identifica con seguridad quién es la bala y quién el jugador
-    const bullet  = obj1?.isEnemyBullet ? obj1 : obj2;
-    const pl      = obj1?.isEnemyBullet ? obj2 : obj1;
-
-    // Destruye SIEMPRE la bala que tocó al jugador
-    if (bullet && bullet.destroy) bullet.destroy();
-
-    // Si no está en invulnerabilidad, aplica el daño “escudado”
+  this.physics.add.overlap(enemyBulletsGroup, player, (b, _p) => {
     if (!gameOver && !isInvulnerable) {
+      if (b && b.destroy) b.destroy(); // destroy first to avoid multi-triggers
       if (jetpackActive) {
-        onJetpackDamaged(this);   // rompe jetpack y activa invulnerabilidad
+        onJetpackDamaged(this);
       } else {
         endGame(this);
       }
@@ -612,7 +705,6 @@ function create() {
   this.physics.add.overlap(player, hazardsGroup, (_pl, _hz) => {
     if (hazardOn && !isInvulnerable) {
       if (jetpackActive) {
-        // Jetpack absorbs hit (armor)
         onJetpackDamaged(this);
       } else {
         endGame(this);
@@ -622,14 +714,13 @@ function create() {
   this.physics.add.overlap(player, enemiesGroup, (p, e) => {
     if (!gameOver && !isInvulnerable) {
       if (jetpackActive) {
-        // Jetpack absorbs hit (armor)
         onJetpackDamaged(this);
       } else {
         endGame(this);
       }
     }
   });
-  
+
   // Power-Ups overlap
   this.physics.add.overlap(player, powerUpsGroup, (p, powerUp) => onPowerUpCollected(this, powerUp));
 
@@ -641,46 +732,26 @@ function create() {
   const hudBg = this.add.rectangle(10, 10, 200, 90, 0x000000, 0.5);
   hudBg.setOrigin(0, 0);
   hudBg.setStrokeStyle(2, 0x00ffff, 0.4);
-  hudBg.setScrollFactor(0);
-  hudBg.setDepth(999);
-  
+  hudBg.setScrollFactor(0); hudBg.setDepth(999);
+
   scoreText = this.add.text(16, 16, 'Score: 0', {
-    fontSize: '24px',
-    fontFamily: 'Arial, sans-serif',
-    color: '#00ff00',
-    stroke: '#000000',
-    strokeThickness: 2
+    fontSize: '24px', fontFamily: 'Arial, sans-serif', color: '#00ff00', stroke: '#000000', strokeThickness: 2
   }).setScrollFactor(0).setDepth(1000);
-  
+
   this.ammoText = this.add.text(16, 44, 'Ammo: ' + ammo, {
-    fontSize: '20px',
-    fontFamily: 'Arial, sans-serif',
-    color: '#ffff00',
-    stroke: '#000000',
-    strokeThickness: 2
+    fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#ffff00', stroke: '#000000', strokeThickness: 2
   }).setScrollFactor(0).setDepth(1000);
-  
+
   comboText = this.add.text(16, 68, '', {
-    fontSize: '20px',
-    fontFamily: 'Arial, sans-serif',
-    color: '#00ffff',
-    stroke: '#000000',
-    strokeThickness: 2
+    fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#00ffff', stroke: '#000000', strokeThickness: 2
   }).setScrollFactor(0).setDepth(1000);
 
   const titleSplash = this.add.text(400, 200, 'CHAINFALL', {
-    fontSize: '64px',
-    fontFamily: 'Arial, sans-serif',
-    color: '#ffffff',
-    stroke: '#000000',
-    strokeThickness: 6
+    fontSize: '64px', fontFamily: 'Arial, sans-serif',
+    color: '#ffffff', stroke: '#000000', strokeThickness: 6
   }).setOrigin(0.5).setScrollFactor(0);
   this.tweens.add({
-    targets: titleSplash,
-    alpha: { from: 1, to: 0 },
-    duration: 1200,
-    delay: 300,
-    ease: 'Quad.easeOut',
+    targets: titleSplash, alpha: { from: 1, to: 0 }, duration: 1200, delay: 300, ease: 'Quad.easeOut',
     onComplete: () => titleSplash.destroy()
   });
 
@@ -694,27 +765,25 @@ function create() {
       player.body.setVelocityY(-jump);
       playTone(scene, 523, 0.05);
     }
-    // P1A: disparo normal en aire (si no está cargando)
+    // P1A: normal shot in air
     if (key === 'P1A' && player && player.body && !player.body.blocked.down && ammo > 0 && !isCharging) {
       fireBullet(scene);
     }
-    // P1B: iniciar Charge Shot si está en el aire
+    // P1B: start charge if airborne
     if (key === 'P1B' && player && player.body && !player.body.blocked.down && ammo > 1 && !isCharging) {
       startCharging(scene);
     }
   });
-
   this.input.keyboard.on('keyup', (event) => {
     const key = KEYBOARD_TO_ARCADE[event.key] || event.key;
     if (key === 'P1L') keysState.left = false;
     if (key === 'P1R') keysState.right = false;
-    
-    // P1B release: disparar Ray Gun o cancelar carga
+
+    // P1B release: fire ray or cancel
     if (key === 'P1B' && isCharging) {
       const heldTime = scene.time.now - chargeStartTime;
       const isAirborne = player && player.body && !player.body.blocked.down;
       if (heldTime >= CHARGE_THRESHOLD_MS && ammo >= CHARGE_COST_AMMO && isAirborne) {
-        // Restaurar timeScale ANTES de disparar para evitar afectar la bala/rayo
         stopCharging(scene, true);
         fireChargedBullet(scene);
       } else {
@@ -732,8 +801,19 @@ function create() {
   if (debugGraphics) debugGraphics.destroy();
   debugGraphics = this.add.graphics();
   debugGraphics.setDepth(4500);
-}
 
+  // ===== Clean globals on scene shutdown/destroy (prevents stale .entries errors) =====
+  const nullGlobals = () => {
+    platformsGroup = null;
+    bulletsGroup = null;
+    hazardsGroup = null;
+    enemiesGroup = null;
+    enemyBulletsGroup = null;
+    powerUpsGroup = null;
+  };
+  this.events.once('shutdown', nullGlobals);
+  this.events.once('destroy', nullGlobals);
+}
 
 function update(_time, _delta) {
   if (gameOver) return;
@@ -743,20 +823,20 @@ function update(_time, _delta) {
     let vx = 0;
     if (keysState.left) vx -= speed;
     if (keysState.right) vx += speed;
-    
-    // Compensación de slow-mo: mantener X del jugador a “sensación normal”
+
+    // keep X feel during slow-mo
     const timeScale = this.physics.world.timeScale || 1.0;
     if (isCharging && timeScale > 1.0) {
       vx = vx * timeScale;
     }
     player.body.setVelocityX(vx);
-    
-    // Cancelar carga si toca el suelo
+
+    // Cancel charge on ground
     if (isCharging && player.body.blocked.down) {
       stopCharging(this, false);
     }
-    
-    // Visuales de canalización
+
+    // Channel visuals
     if (isCharging && chargeVisuals) {
       chargeVisuals.clear();
       const progress = Math.min((this.time.now - chargeStartTime) / CHARGE_THRESHOLD_MS, 1.0);
@@ -766,7 +846,7 @@ function update(_time, _delta) {
         chargeVisuals.lineStyle(2, 0xEEF527, alpha);
         chargeVisuals.strokeCircle(player.x, player.y, radius);
       }
-      // Barra de progreso
+      // Progress bar
       if (progress < 1.0) {
         const barWidth = 30, barHeight = 4;
         const barX = player.x - barWidth / 2, barY = player.y - 20;
@@ -777,12 +857,10 @@ function update(_time, _delta) {
       }
     }
 
-    // === AUDIO DINÁMICO DE CARGA ===
-    if (isCharging) {
-      updateChargeAudio(this);
-    }
+    // Charge audio sweep
+    if (isCharging) updateChargeAudio(this);
 
-    // Land detection to reset ammo and combo
+    // Land detection: reset ammo/combo
     const onGround = player.body.blocked.down;
     if (onGround && !wasOnGround) {
       if (ammo > maxAmmo || comboCount > 0) {
@@ -793,7 +871,7 @@ function update(_time, _delta) {
       ammo = maxAmmo;
       if (this.ammoText) { this.ammoText.setText('Ammo: ' + ammo); this.ammoText.setColor('#ffff00'); }
       playTone(this, 440, 0.05);
-      // Landing visuals
+
       player.setFillStyle(0x00ffff);
       this.tweens.add({ targets: player, duration: 200, onComplete: () => player.setFillStyle(0xffffff) });
       for (let i = 0; i < 4; i++) {
@@ -808,10 +886,9 @@ function update(_time, _delta) {
     wasOnGround = onGround;
   }
 
-  // Ensure platforms fill below camera; recycle those far above
+  // Ensure platforms fill below camera; recycle
   const cam = this.cameras.main;
   cam.scrollY = Math.max(cam.scrollY, player.y - 260);
-  // Grow world bounds on demand
   ensureWorldCapacity(this, cam.scrollY + 1000);
   seedPlatforms(this, cam.scrollY + 100, cam.scrollY + 800);
   for (let i = 0; i < platforms.length; i++) {
@@ -822,7 +899,7 @@ function update(_time, _delta) {
       if (p.body && p.body.updateFromGameObject) p.body.updateFromGameObject();
     }
   }
-  // Rebase coordinates to avoid large Y values
+  // Rebase coordinates to avoid large Y
   maybeRebaseWorld(this);
 
   // Cleanup bullets below view
@@ -832,11 +909,10 @@ function update(_time, _delta) {
     return true;
   });
 
-  // Cleanup & enforce enemy bullet motion
+  // Enemy bullets: enforce straight up & cleanup
   if (enemyBulletsGroup) {
-    enemyBulletsGroup.getChildren().forEach(b => {
+    safeEach(enemyBulletsGroup, (b) => {
       if (!b || !b.body) return;
-      // Asegura trayectoria estrictamente vertical hacia arriba
       b.body.setAllowGravity(false);
       if (b.body.velocity.x !== 0) b.body.setVelocityX(0);
       if (b.body.velocity.y === 0) b.body.setVelocityY(ENEMY_BULLET_SPEED_Y);
@@ -844,13 +920,13 @@ function update(_time, _delta) {
     });
   }
 
-  // Game over if player moves above the visible area (top-out)
+  // Game over if player moves above visible area
   if (player && player.y < cam.scrollY - 20) {
     endGame(this);
     return;
   }
-  
-  // Cleanup power-ups by distance (not time)
+
+  // Cleanup power-ups by distance
   powerUps = powerUps.filter(p => {
     if (!p.active) return false;
     if (p.y > cam.scrollY + 800 || p.y < cam.scrollY - 100) {
@@ -860,17 +936,15 @@ function update(_time, _delta) {
     }
     return true;
   });
-  
-  // Update jetpack position
-  if (jetpackActive) {
-    updateJetpackPosition();
-  }
-  
+
+  // Update jetpack blocks
+  if (jetpackActive) updateJetpackPosition();
+
   // Update invulnerability
   if (isInvulnerable && this.time.now >= invulnerabilityEndTime) {
     isInvulnerable = false;
     player.setAlpha(1);
-    player.setFillStyle(0xffffff); // Restore white color
+    player.setFillStyle(0xffffff);
   }
 
   // Hazards follow camera and toggle
@@ -883,10 +957,10 @@ function update(_time, _delta) {
     setHazardVisual(this);
   }
 
-  // Enemies movement and interactions
+  // Enemies movement & behaviors
   updateEnemies(this, _delta || 16);
 
-  // Draw hurtboxes/hitboxes when enabled
+  // Debug hitboxes
   if (debugHitboxes) drawHitboxes(this);
 }
 
@@ -903,69 +977,57 @@ function maybeRebaseWorld(scene) {
   if (cam.scrollY < REBASE_THRESHOLD) return;
   const dy = REBASE_DELTA;
   worldYOffset += dy;
-  // Camera
+
   cam.scrollY -= dy;
-  // Player
   if (player) player.y -= dy;
-  // Platforms (static bodies)
+
   for (let i = 0; i < platforms.length; i++) {
     const p = platforms[i];
     if (!p) continue;
     if (p.y != null) p.y -= dy;
     if (p.body && p.body.updateFromGameObject) p.body.updateFromGameObject();
   }
-  // Enemies
-  if (enemiesGroup) {
-    enemiesGroup.getChildren().forEach(e => { if (e && e.y != null) e.y -= dy; });
-  }
-  // Bullets
-  if (bulletsGroup) {
-    bulletsGroup.getChildren().forEach(b => { if (b && b.y != null) b.y -= dy; });
-  }
-  // Enemy bullets
-  if (enemyBulletsGroup) {
-    enemyBulletsGroup.getChildren().forEach(b => { if (b && b.y != null) b.y -= dy; });
-  }
-  // Power-Ups
-  if (powerUpsGroup) {
-    powerUpsGroup.getChildren().forEach(p => {
-      if (p && p.y != null) {
-        p.y -= dy;
-        if (p.label && p.label.y != null) p.label.y -= dy;
-      }
-    });
-  }
-  // Jetpack blocks
+
+  safeEach(enemiesGroup, (e) => { if (e && e.y != null) e.y -= dy; });
+  safeEach(bulletsGroup, (b) => { if (b && b.y != null) b.y -= dy; });
+  safeEach(enemyBulletsGroup, (b) => { if (b && b.y != null) b.y -= dy; });
+
+  safeEach(powerUpsGroup, (p) => {
+    if (p && p.y != null) {
+      p.y -= dy;
+      if (p.label && p.label.y != null) p.label.y -= dy;
+    }
+  });
+
   if (jetpackLeftBlock) jetpackLeftBlock.y -= dy;
   if (jetpackRightBlock) jetpackRightBlock.y -= dy;
-  // Hazards (static bodies)
+
   if (leftHazard) { leftHazard.y -= dy; if (leftHazard.body && leftHazard.body.updateFromGameObject) leftHazard.body.updateFromGameObject(); }
   if (rightHazard) { rightHazard.y -= dy; if (rightHazard.body && rightHazard.body.updateFromGameObject) rightHazard.body.updateFromGameObject(); }
 }
 
-
 function endGame(scene) {
   gameOver = true;
   playTone(scene, 220, 0.5);
-  
-  // Limpiar estado de carga
+
+  // Clear charge
   if (isCharging) stopCharging(scene, false);
   stopChargeAudio(scene);
-  
-  // Limpiar jetpack
+
+  // Clear jetpack
   if (jetpackActive) deactivateJetpack(scene);
-  
-  // Limpiar invulnerabilidad
+
+  // Clear invulnerability
   isInvulnerable = false;
   invulnerabilityEndTime = 0;
   if (player) {
     player.setAlpha(1);
     player.setScale(1, 1);
   }
-  
-  // Restaurar time scale
+
+  // Restore time scale
   if (scene.physics && scene.physics.world) scene.physics.world.timeScale = 1.0;
-  
+
   // Stop gameplay
   if (scene.physics && scene.physics.world) scene.physics.world.pause();
   if (scene.cameras && scene.cameras.main) scene.cameras.main.stopFollow();
@@ -1047,10 +1109,11 @@ function restartGame(scene) {
   comboText = null;
   platforms = [];
   bullets = [];
-  scene.scene.restart();
+  // Restart with current mode preserved
+  scene.scene.restart({ mode: selectedMode });
 }
 
-// ===== Helper functions for Downwell-like prototype =====
+// ===== Helper functions =====
 function seedPlatforms(scene, fromY, toY) {
   let maxExistingY = platforms.length ? Math.max(...platforms.map(p => p.y)) : fromY - 100;
   let y = Math.max(fromY, maxExistingY + 70);
@@ -1061,7 +1124,6 @@ function seedPlatforms(scene, fromY, toY) {
     y += Phaser.Math.Between(70, 120);
   }
 }
-
 function createPlatform(scene, y) {
   const width = Phaser.Math.Between(70, 180);
   const x = Phaser.Math.Between(40, 760 - width);
@@ -1076,7 +1138,6 @@ function createPlatform(scene, y) {
   if (rect.body && rect.body.updateFromGameObject) rect.body.updateFromGameObject();
   return rect;
 }
-
 function positionPlatform(scene, rect, y) {
   const width = Phaser.Math.Between(70, 180);
   const x = Phaser.Math.Between(40, 760 - width);
@@ -1105,8 +1166,7 @@ function fireBullet(scene) {
   const useBlue = comboCount > 0;
   const bulletColor = useBlue ? 0x00ffff : 0xff4444;
   const strokeColor = useBlue ? 0x88ffff : 0xff8888;
-  
-  // Fire from player center
+
   const b = scene.add.rectangle(player.x, player.y + 16, 6, 14, bulletColor);
   b.setStrokeStyle(1, strokeColor, 0.7);
   scene.physics.add.existing(b);
@@ -1117,10 +1177,9 @@ function fireBullet(scene) {
   b.body.setVelocityY(550);
   if (bulletsGroup) bulletsGroup.add(b);
   bullets.push(b);
-  
-  // If jetpack active, fire from side blocks too
+
+  // Jetpack side shots
   if (jetpackActive && jetpackLeftBlock && jetpackRightBlock) {
-    // Left jetpack bullet
     const bL = scene.add.rectangle(jetpackLeftBlock.x, jetpackLeftBlock.y + 10, 6, 14, bulletColor);
     bL.setStrokeStyle(1, strokeColor, 0.7);
     scene.physics.add.existing(bL);
@@ -1131,8 +1190,7 @@ function fireBullet(scene) {
     bL.body.setVelocityY(550);
     if (bulletsGroup) bulletsGroup.add(bL);
     bullets.push(bL);
-    
-    // Right jetpack bullet
+
     const bR = scene.add.rectangle(jetpackRightBlock.x, jetpackRightBlock.y + 10, 6, 14, bulletColor);
     bR.setStrokeStyle(1, strokeColor, 0.7);
     scene.physics.add.existing(bR);
@@ -1144,7 +1202,7 @@ function fireBullet(scene) {
     if (bulletsGroup) bulletsGroup.add(bR);
     bullets.push(bR);
   }
-  
+
   ammo -= 1;
   if (scene.ammoText) {
     scene.ammoText.setText('Ammo: ' + ammo);
@@ -1157,11 +1215,10 @@ function fireBullet(scene) {
 
 // ===== Enemy helpers =====
 function getDifficultyMultiplier() {
-  const depth = Math.max(0, player.y - 150); // depth from start
+  const depth = Math.max(0, player.y - 150);
   const steps = Math.floor(depth / DIFFICULTY_DEPTH_STEP);
-  return Math.min(steps * 0.15, 1); // 0 to 1 progression
+  return Math.min(steps * 0.15, 1);
 }
-
 function maybeSpawnEnemies(scene, platform) {
   if (!enemiesGroup) return;
   if (platform && platform.noEnemies) return;
@@ -1169,16 +1226,15 @@ function maybeSpawnEnemies(scene, platform) {
   const diffMult = getDifficultyMultiplier();
   const countMult = 1 + (diffMult * (DIFFICULTY_COUNT_MULT_MAX - 1));
   let count = 0;
-  const baseChance = 75 + Math.floor(diffMult * 15); // 75% -> 90%
+  const baseChance = 75 + Math.floor(diffMult * 15);
   if (Phaser.Math.Between(0, 99) < baseChance) count = 1;
-  const secondChance = 12 + Math.floor(diffMult * 28); // 12% -> 40%
+  const secondChance = 12 + Math.floor(diffMult * 28);
   if (pw > 140 && Phaser.Math.Between(0, 99) < secondChance) count = Math.min(2, count + 1);
-  const maxEnemies = Math.floor(2 * countMult); // 2 -> 3-4 with depth
+  const maxEnemies = Math.floor(2 * countMult);
   for (let i = 0; i < count && platform.enemies.length < maxEnemies; i++) {
     spawnEnemy(scene, platform);
   }
 }
-
 function spawnEnemy(scene, platform) {
   const diffMult = getDifficultyMultiplier();
   const shooterChance = SHOOTER_SPAWN_CHANCE_BASE + (diffMult * (DIFFICULTY_SPAWN_MULT_MAX - 1) * SHOOTER_SPAWN_CHANCE_BASE);
@@ -1195,16 +1251,14 @@ function spawnEnemy(scene, platform) {
   const ey = platform.y - ph / 2 - eh / 2;
   const enemy = scene.add.rectangle(ex, ey, ew, eh, isShooter ? 0xF527EE : (isJumper ? 0x27f565 : 0xff2222));
   enemy.type = isShooter ? 'shooterUp' : (isJumper ? 'jumper' : 'walker');
-  
-  // Shield assignment
+
   enemy.shielded = Math.random() < SHIELDED_SPAWN_CHANCE;
   const strokeWidth = enemy.shielded ? 3 : 1;
   const strokeColor = enemy.shielded ? 0x00ffff : (isShooter ? 0xF74DF2 : (isJumper ? 0x27f565 : 0xff6666));
   enemy.setStrokeStyle(strokeWidth, strokeColor, 0.8);
-  
+
   scene.physics.add.existing(enemy);
 
-  // Alpha pulse (stronger for shielded)
   scene.tweens.add({
     targets: enemy,
     alpha: { from: 1, to: enemy.shielded ? 0.7 : 0.85 },
@@ -1213,7 +1267,7 @@ function spawnEnemy(scene, platform) {
     repeat: -1,
     ease: 'Sine.easeInOut'
   });
-  
+
   if (enemy.body && enemy.body.setAllowGravity) {
     enemy.body.setAllowGravity(isJumper);
   }
@@ -1221,7 +1275,7 @@ function spawnEnemy(scene, platform) {
   enemy.body.setSize(ew, eh, true);
   enemy.body.enable = true;
   enemy.body.checkCollision.up = enemy.body.checkCollision.down = enemy.body.checkCollision.left = enemy.body.checkCollision.right = true;
-  
+
   enemy.minX = platform.x - pw / 2 + 14;
   enemy.maxX = platform.x + pw / 2 - 14;
   enemy.dir = Phaser.Math.Between(0, 1) ? 1 : -1;
@@ -1237,16 +1291,16 @@ function spawnEnemy(scene, platform) {
     enemy.shootCooldownMs = Phaser.Math.Between(SHOOTER_COOLDOWN_MIN_MS, SHOOTER_COOLDOWN_MAX_MS);
     enemy.shootTimerMs = 0;
   }
-  
+
   enemy.body.setVelocityX(enemy.dir * enemy.speed);
   enemy.body.setVelocityY(0);
-  
+
   enemiesGroup.add(enemy);
   platform.enemies.push(enemy);
 }
 
 function updateEnemies(scene, deltaMs) {
-  enemiesGroup.getChildren().forEach(e => {
+  safeEach(enemiesGroup, (e) => {
     if (!e.active || !e.body) return;
     const isJumper = e.type === 'jumper';
     const isShooter = e.type === 'shooterUp';
@@ -1267,10 +1321,9 @@ function updateEnemies(scene, deltaMs) {
     if (isShooter) {
       e.shootTimerMs = (e.shootTimerMs || 0) + (deltaMs || 0);
       if (e.shootTimerMs >= (e.shootCooldownMs || SHOOTER_COOLDOWN_MIN_MS)) {
-        // ---- BALAS ENEMIGAS: trayectoria vertical hacia ARRIBA, sin gravedad ----
+        // enemy bullet straight up
         const by = e.y - (e.displayHeight || 14) / 2;
         const b = scene.add.rectangle(e.x, by, 4, 12, 0xFC03F5);
-        b.isEnemyBullet = true;           // <-- FLAG para reconocerla
         scene.physics.add.existing(b);
         if (b.body) {
           b.body.setAllowGravity(false);
@@ -1284,25 +1337,24 @@ function updateEnemies(scene, deltaMs) {
         }
         if (enemyBulletsGroup) enemyBulletsGroup.add(b);
         e.shootTimerMs = 0;
-        const shooters = enemiesGroup.getChildren().filter(x => x.type === 'shooterUp').length;
+        const shooters = safeChildren(enemiesGroup).filter(x => x && x.type === 'shooterUp').length;
         const mult = shooters > 2 ? 1.3 : 1;
         e.shootCooldownMs = Phaser.Math.Between(SHOOTER_COOLDOWN_MIN_MS, SHOOTER_COOLDOWN_MAX_MS) * mult;
       }
     }
   });
+
   platforms.forEach(p => {
     if (p.enemies) p.enemies = p.enemies.filter(e => e.active);
   });
 }
 
 function onBulletHitsEnemy(scene, bullet, enemy) {
-  // === SHIELD LOGIC ===
+  // Shield logic
   if (enemy && enemy.active && enemy.shielded) {
     const isChargedBullet = bullet && bullet.isCharged;
     if (!isChargedBullet) {
-      // Normal bullet bounces off shield
       if (bullet && bullet.destroy) bullet.destroy();
-      // Shield bounce visuals
       const flash = scene.add.circle(enemy.x, enemy.y, enemy.displayWidth / 2 + 4, 0x00ffff, 0.6);
       flash.setDepth(1500);
       scene.tweens.add({ targets: flash, scale: 1.4, alpha: 0, duration: 200, ease: 'Quad.easeOut', onComplete: () => flash.destroy() });
@@ -1317,19 +1369,19 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
       playTone(scene, 800, 0.08);
       return; // Enemy survives
     }
-    // Charged bullet breaks shield and kills enemy
   }
-  
-  // === BULLET CLEANUP ===
+
+  // Bullet cleanup
   if (bullet && bullet.isCharged && bullet.pierceCount > 0) {
     bullet.pierceCount--;
-    if (bullet.pierceCount <= 0 && bullet.destroy) { bullet.destroy(); }
+    if (bullet.pierceCount <= 0 && bullet.destroy) bullet.destroy();
   } else {
     if (bullet && bullet.destroy) bullet.destroy();
   }
-  
-  // === ENEMY DEATH ===
+
+  // Enemy death & scoring/combo rules
   if (enemy && enemy.active) {
+    // death particles
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
       const particle = scene.add.rectangle(enemy.x, enemy.y, 4, 4, 0xff6666);
@@ -1338,87 +1390,113 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
       particle.body.setGravity(0, 300);
       scene.tweens.add({ targets: particle, alpha: 0, scale: 0, duration: 500, onComplete: () => particle.destroy() });
     }
-    
+
     const p = enemy.platformRef;
     if (p && p.enemies) p.enemies = p.enemies.filter(x => x !== enemy);
-    
+
     const isAirborne = player && player.body && !player.body.blocked.down;
     const baseTypeScore = enemy.type === 'jumper' ? SCORE_JUMPER : (enemy.type === 'shooterUp' ? SCORE_SHOOTER : SCORE_WALKER);
     const baseScore = enemy.shielded ? Math.floor(baseTypeScore * SHIELD_SCORE_MULT) : baseTypeScore;
+
     let earnedScore = baseScore;
+
     if (isAirborne) {
-      const isFirstCombo = comboCount === 0;
+      // === Full combo logic (same for BOTH modes) ===
+      const wasComboZero = comboCount === 0;
       comboCount++;
       comboMultiplier = 1 + (comboCount * 0.5);
-      if (isFirstCombo) { ammo = maxAmmo; } else { ammo++; }
-      if (comboText) {
-        comboText.setText('COMBO x' + comboMultiplier.toFixed(1) + ' (' + comboCount + ')');
-        const scale = 1 + (comboCount * 0.1); comboText.setScale(Math.min(scale, 2));
-      }
       earnedScore = Math.floor(baseScore * comboMultiplier);
       score += earnedScore;
-      const tiers = [[10,'#ff00ff',28,5,0.02,'GODLIKE!'],[7,'#ff0080',24,4,0.015,'INSANE!'],[5,'#ff4400',22,4,0.012,'AMAZING!'],[3,C_YELLOW,20,3,0.008,'GREAT!']];
-      const tier = tiers.find(t => comboCount >= t[0]) || [0,C_CYAN,18,3,0.005,''];
-      let [,textColor,textSize,strokeThickness,shakeIntensity,comboMessage] = tier;
-      if (isFirstCombo && !comboMessage) comboMessage = 'COMBO START!';
+
+      // VFX/SFX like Challenger
+      const tiers = [
+        [10,'#ff00ff',28,5,0.02,'GODLIKE!'],
+        [7,'#ff0080',24,4,0.015,'INSANE!'],
+        [5,'#ff4400',22,4,0.012,'AMAZING!'],
+        [3,'#ffff00',20,3,0.008,'GREAT!']
+      ];
+      const tier = tiers.find(t => comboCount >= t[0]) || [0,'#00ffff',18,3,0.005,''];
+      let [, textColor, textSize, strokeThickness, shakeIntensity, comboMessage] = tier;
+
       const t = scene.add.text(enemy.x, enemy.y - 10, '+' + earnedScore, {
         fontSize: textSize + 'px', fontFamily: FONT, color: textColor, stroke: C_BLACK, strokeThickness: strokeThickness
       }).setOrigin(0.5);
       scene.tweens.add({ targets: t, y: t.y - 30, scale: { from: 0.5, to: 1.2 }, alpha: 0, duration: 700, ease: 'Back.easeOut', onComplete: () => t.destroy() });
+
+      if (!comboMessage && comboCount === 1) comboMessage = 'COMBO START!';
       if (comboMessage) {
         const msg = scene.add.text(enemy.x, enemy.y - 35, comboMessage, {
           fontSize: (textSize + 4) + 'px', fontFamily: FONT, color: textColor, stroke: C_WHITE, strokeThickness: 2
         }).setOrigin(0.5);
         scene.tweens.add({ targets: msg, y: msg.y - 40, scale: { from: 1.5, to: 0.8 }, alpha: { from: 1, to: 0 }, duration: 1000, ease: 'Power2', onComplete: () => msg.destroy() });
       }
+      if (comboText) {
+        comboText.setText('COMBO x' + comboMultiplier.toFixed(1) + ' (' + comboCount + ')');
+        const scale = 1 + (comboCount * 0.1); comboText.setScale(Math.min(scale, 2));
+      }
       if (scene.cameras && scene.cameras.main) scene.cameras.main.shake(200, shakeIntensity);
+      const pitchMultiplier = 1 + (comboCount * 0.1);
+      playTone(scene, 660 * pitchMultiplier, 0.08);
+
+      // === Ammo rules diverge by mode ===
+      if (selectedMode === 'normal') {
+        maxAmmo = 10;
+        ammo = maxAmmo; // ONLY difference in Normal mode
+      } else {
+        ammo = wasComboZero ? maxAmmo : (ammo + 1);
+      }
+
       if (scene.ammoText) {
         scene.ammoText.setText('Ammo: ' + ammo);
         scene.ammoText.setColor(textColor);
         scene.tweens.add({ targets: scene.ammoText, scale: { from: 1, to: 1.3 }, duration: 150, yoyo: true, ease: 'Quad.easeOut' });
       }
-      const pitchMultiplier = 1 + (comboCount * 0.1);
-      playTone(scene, 660 * pitchMultiplier, 0.08);
     } else {
+      // Grounded kill (no combo gain)
       score += earnedScore;
-      ammo = Math.min(maxAmmo, ammo + 1);
+
+      // Ammo rules
+      if (selectedMode === 'normal') {
+        ammo = maxAmmo; // refill on ANY bullet kill
+      } else {
+        ammo = Math.min(maxAmmo, ammo + 1);
+      }
+
       const t = scene.add.text(enemy.x, enemy.y - 10, '+' + baseScore, {
         fontSize: '16px', fontFamily: FONT, color: '#ffdd55', stroke: C_BLACK, strokeThickness: 2
       }).setOrigin(0.5);
       scene.tweens.add({ targets: t, y: t.y - 20, alpha: 0, duration: 500, onComplete: () => t.destroy() });
+
       if (scene.ammoText) { scene.ammoText.setText('Ammo: ' + ammo); scene.ammoText.setColor('#ffff00'); }
       playTone(scene, 660, 0.08);
     }
+
     if (scoreText) scoreText.setText('Score: ' + score);
     enemy.destroy();
-    
+
     // Spawn power-up on airborne kills (only if jetpack not active)
-    if (isAirborne && !jetpackActive && Math.random() < POWERUP_SPAWN_CHANCE && powerUps.length < POWERUP_MAX_ACTIVE) {
+    const isAirborneAfter = player && player.body && !player.body.blocked.down;
+    if (isAirborneAfter && !jetpackActive && Math.random() < POWERUP_SPAWN_CHANCE && powerUps.length < POWERUP_MAX_ACTIVE) {
       spawnPowerUp(scene, enemy.x, enemy.y - 40);
     }
   }
 }
 
+
 function spawnPowerUp(scene, x, y) {
   if (!powerUpsGroup) return;
-  // Larger power-up box with jetpack visual
   const powerUp = scene.add.rectangle(x, y, 20, 20, 0xff9900, 0.9);
   powerUp.setStrokeStyle(3, 0xffcc00, 1);
-  
-  // Add text emoji/label for jetpack
-  const label = scene.add.text(x, y, '🚀', {
-    fontSize: '16px',
-    align: 'center'
-  }).setOrigin(0.5);
+
+  const label = scene.add.text(x, y, '🚀', { fontSize: '16px', align: 'center' }).setOrigin(0.5);
   label.setDepth(1500);
   powerUp.label = label;
-  
+
   scene.physics.add.existing(powerUp);
   powerUp.body.setAllowGravity(false);
   if (powerUpsGroup) powerUpsGroup.add(powerUp);
   powerUps.push(powerUp);
-  
-  // Pulse animation (no despawn by time)
+
   scene.tweens.add({
     targets: [powerUp, label],
     scale: { from: 0.9, to: 1.1 },
@@ -1427,24 +1505,12 @@ function spawnPowerUp(scene, x, y) {
     repeat: -1,
     ease: 'Sine.easeInOut'
   });
-  
-  // Slow rotation
-  scene.tweens.add({
-    targets: powerUp,
-    angle: 360,
-    duration: 3000,
-    repeat: -1,
-    ease: 'Linear'
-  });
+  scene.tweens.add({ targets: powerUp, angle: 360, duration: 3000, repeat: -1, ease: 'Linear' });
 }
 
 function onPowerUpCollected(scene, powerUp) {
   if (!powerUp || !powerUp.active) return;
-  
-  // Activate Jetpack
   activateJetpack(scene);
-  
-  // Particle burst
   for (let i = 0; i < 8; i++) {
     const angle = (i / 8) * Math.PI * 2;
     const p = scene.add.rectangle(powerUp.x, powerUp.y, 4, 4, 0xff9900);
@@ -1453,12 +1519,7 @@ function onPowerUpCollected(scene, powerUp) {
     p.body.setGravity(0, 0);
     scene.tweens.add({ targets: p, alpha: 0, scale: 0, duration: 400, onComplete: () => p.destroy() });
   }
-  
-  // Audio power-up sound
-  playTone(scene, 880, 0.1);
-  playTone(scene, 1100, 0.1);
-  
-  // Destroy power-up and label
+  playTone(scene, 880, 0.1); playTone(scene, 1100, 0.1);
   if (powerUp.label && powerUp.label.destroy) powerUp.label.destroy();
   powerUp.destroy();
   powerUps = powerUps.filter(p => p !== powerUp);
@@ -1466,65 +1527,43 @@ function onPowerUpCollected(scene, powerUp) {
 
 function activateJetpack(scene) {
   jetpackActive = true;
-  
-  // Create jetpack visual blocks (left and right)
   const offsetX = 14;
   jetpackLeftBlock = scene.add.rectangle(player.x - offsetX, player.y, 8, 16, 0x888888);
   jetpackLeftBlock.setStrokeStyle(1, 0xaaaaaa, 0.8);
   jetpackLeftBlock.setDepth(player.depth - 1);
-  
   jetpackRightBlock = scene.add.rectangle(player.x + offsetX, player.y, 8, 16, 0x888888);
   jetpackRightBlock.setStrokeStyle(1, 0xaaaaaa, 0.8);
   jetpackRightBlock.setDepth(player.depth - 1);
-  
-  // Flame effect pulse
   scene.tweens.add({
     targets: [jetpackLeftBlock, jetpackRightBlock],
     alpha: { from: 1, to: 0.6 },
-    duration: 150,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.easeInOut'
+    duration: 150, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
   });
-  
   playTone(scene, 660, 0.15);
 }
-
 function deactivateJetpack(scene) {
   jetpackActive = false;
   if (jetpackLeftBlock) { jetpackLeftBlock.destroy(); jetpackLeftBlock = null; }
   if (jetpackRightBlock) { jetpackRightBlock.destroy(); jetpackRightBlock = null; }
   playTone(scene, 440, 0.1);
 }
-
 function updateJetpackPosition() {
   if (!jetpackActive || !player) return;
   const offsetX = 14;
-  if (jetpackLeftBlock) {
-    jetpackLeftBlock.x = player.x - offsetX;
-    jetpackLeftBlock.y = player.y;
-  }
-  if (jetpackRightBlock) {
-    jetpackRightBlock.x = player.x + offsetX;
-    jetpackRightBlock.y = player.y;
-  }
+  if (jetpackLeftBlock) { jetpackLeftBlock.x = player.x - offsetX; jetpackLeftBlock.y = player.y; }
+  if (jetpackRightBlock) { jetpackRightBlock.x = player.x + offsetX; jetpackRightBlock.y = player.y; }
 }
-
 function onJetpackDamaged(scene) {
   if (!jetpackActive || isInvulnerable) return;
-  
+
   // Activate invulnerability immediately
   isInvulnerable = true;
   invulnerabilityEndTime = scene.time.now + INVULNERABILITY_DURATION_MS;
-  
-  // Kill any existing tweens on player to prevent conflicts
+
   scene.tweens.killTweensOf(player);
-  
-  // Ensure player is fully visible before starting new animations
   player.setAlpha(1);
   player.setScale(1, 1);
-  
-  // Explosion particles from jetpack
+
   for (let i = 0; i < 12; i++) {
     const angle = (i / 12) * Math.PI * 2;
     const p = scene.add.rectangle(player.x, player.y, 4, 4, 0xff6600);
@@ -1533,8 +1572,7 @@ function onJetpackDamaged(scene) {
     p.body.setGravity(0, 300);
     scene.tweens.add({ targets: p, alpha: 0, scale: 0, duration: 400, onComplete: () => p.destroy() });
   }
-  
-  // Flash player red briefly, then start invulnerability flicker
+
   player.setFillStyle(0xff0000);
   scene.tweens.add({
     targets: player,
@@ -1546,19 +1584,14 @@ function onJetpackDamaged(scene) {
     onComplete: () => {
       player.setFillStyle(0xffffff);
       player.setScale(1, 1);
-      // Start invulnerability flicker
       startInvulnerabilityFlicker(scene);
     }
   });
-  
-  // Audio: jetpack break sound
+
   playTone(scene, 220, 0.15);
   playTone(scene, 180, 0.15);
-  
-  // Deactivate jetpack
   deactivateJetpack(scene);
 }
-
 function startInvulnerabilityFlicker(scene) {
   if (!isInvulnerable) return;
   scene.tweens.add({
@@ -1569,11 +1602,7 @@ function startInvulnerabilityFlicker(scene) {
     repeat: Math.floor(INVULNERABILITY_DURATION_MS / 300) - 1,
     ease: 'Linear',
     onComplete: () => {
-      // Ensure player is fully visible when flicker ends
-      if (player) {
-        player.setAlpha(1);
-        player.setFillStyle(0xffffff);
-      }
+      if (player) { player.setAlpha(1); player.setFillStyle(0xffffff); }
     }
   });
 }
@@ -1585,9 +1614,7 @@ function startCharging(scene) {
   chargeStartTime = scene.time.now;
   chargeAudioCompleted = false;
 
-  // Slow-mo global
   if (scene.physics && scene.physics.world) scene.physics.world.timeScale = CHARGE_SLOWMO_SCALE;
-  // Visuales de canalización
   if (!chargeVisuals) {
     chargeVisuals = scene.add.graphics();
     chargeVisuals.setDepth(999);
@@ -1596,36 +1623,27 @@ function startCharging(scene) {
   scene.tweens.add({
     targets: chargeVisuals,
     alpha: { from: 0.8, to: 0.3 },
-    duration: 400,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.easeInOut'
+    duration: 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
   });
 
-  // AUDIO dinámico
   startChargeAudio(scene);
 }
-
 function stopCharging(scene, fired = false) {
   if (!isCharging) return;
   isCharging = false;
 
-  // Restaurar velocidad normal
   if (scene.physics && scene.physics.world) scene.physics.world.timeScale = 1.0;
-  
-  // Limpiar visuales
+
   if (chargeVisuals) {
     scene.tweens.killTweensOf(chargeVisuals);
     chargeVisuals.clear();
     chargeVisuals.destroy();
     chargeVisuals = null;
   }
-  
-  // Detener audio
+
   stopChargeAudio(scene);
   chargeAudioCompleted = false;
 
-  // Efectos de liberación si disparó
   if (fired) {
     const ring = scene.add.circle(player.x, player.y, 10, 0xEEF527, 0.7);
     ring.setDepth(1000);
@@ -1643,13 +1661,12 @@ function stopCharging(scene, fired = false) {
     playTone(scene, 1000, 0.12);
   }
 }
-
 function fireChargedBullet(scene) {
-  // ===== RAY GUN: Rayo instantáneo hacia abajo =====
+  // Instant ray down
   const rayColor = 0xEEF527;
   const rayStart = { x: player.x, y: player.y + 12 };
   const rayEnd = { x: player.x, y: player.y + CHARGE_RAY_MAX_DISTANCE };
-  
+
   const CHARGE_RAY_WIDTH_OUTER = 40;
   const CHARGE_RAY_WIDTH_MID   = 20;
   const CHARGE_RAY_WIDTH_CORE  = 10;
@@ -1660,19 +1677,17 @@ function fireChargedBullet(scene) {
   rayGraphics.lineStyle(CHARGE_RAY_WIDTH_MID, rayColor, 0.7); rayGraphics.lineBetween(rayStart.x, rayStart.y, rayEnd.x, rayEnd.y);
   rayGraphics.lineStyle(CHARGE_RAY_WIDTH_CORE, 0xFFFFFF, 1.0); rayGraphics.lineBetween(rayStart.x, rayStart.y, rayEnd.x, rayEnd.y);
   scene.tweens.add({ targets: rayGraphics, alpha: 0, duration: CHARGE_RAY_VISUAL_DURATION, ease: 'Quad.easeOut', onComplete: () => rayGraphics.destroy() });
-  
-  // Detectar enemigos debajo alineados con el rayo
+
+  // Detect enemies under player within narrow X alignment
   const hitEnemies = [];
-  if (enemiesGroup && enemiesGroup.children) {
-    enemiesGroup.children.entries.forEach(enemy => {
-      if (!enemy.active) return;
-      const horizontalDist = Math.abs(enemy.x - player.x);
-      if (horizontalDist <= 20 && enemy.y > player.y) {
-        const distanceFromPlayer = enemy.y - player.y;
-        hitEnemies.push({ enemy, distance: distanceFromPlayer });
-      }
-    });
-  }
+  safeEach(enemiesGroup, (enemy) => {
+    if (!enemy.active) return;
+    const horizontalDist = Math.abs(enemy.x - player.x);
+    if (horizontalDist <= 20 && enemy.y > player.y) {
+      const distanceFromPlayer = enemy.y - player.y;
+      hitEnemies.push({ enemy, distance: distanceFromPlayer });
+    }
+  });
   hitEnemies.sort((a, b) => a.distance - b.distance);
   const maxHits = CHARGE_PIERCE_COUNT;
   const actualHits = Math.min(hitEnemies.length, maxHits);
@@ -1692,8 +1707,8 @@ function fireChargedBullet(scene) {
     }
     onBulletHitsEnemy(scene, { isCharged: true, pierceCount: 999 }, enemy);
   }
-  
-  // Munición y recoil
+
+  // Ammo & recoil
   ammo -= CHARGE_COST_AMMO;
   if (scene.ammoText) {
     scene.ammoText.setText('Ammo: ' + ammo);
@@ -1714,22 +1729,18 @@ function drawHitboxes(scene) {
     debugGraphics.lineStyle(1, 0x00ff00, 1);
     debugGraphics.strokeRect(player.body.x, player.body.y, player.body.width, player.body.height);
   }
-  if (enemiesGroup) {
-    enemiesGroup.getChildren().forEach(e => {
-      if (e.body) {
-        debugGraphics.lineStyle(1, 0xffa500, 1);
-        debugGraphics.strokeRect(e.body.x, e.body.y, e.body.width, e.body.height);
-      }
-    });
-  }
-  if (bulletsGroup) {
-    bulletsGroup.getChildren().forEach(b => {
-      if (b.body) {
-        debugGraphics.lineStyle(1, 0xffff00, 1);
-        debugGraphics.strokeRect(b.body.x, b.body.y, b.body.width, b.body.height);
-      }
-    });
-  }
+  safeEach(enemiesGroup, (e) => {
+    if (e.body) {
+      debugGraphics.lineStyle(1, 0xffa500, 1);
+      debugGraphics.strokeRect(e.body.x, e.body.y, e.body.width, e.body.height);
+    }
+  });
+  safeEach(bulletsGroup, (b) => {
+    if (b.body) {
+      debugGraphics.lineStyle(1, 0xffff00, 1);
+      debugGraphics.strokeRect(b.body.x, b.body.y, b.body.width, b.body.height);
+    }
+  });
 }
 
 // ===== Side hazard helpers =====
@@ -1744,19 +1755,18 @@ function setupHazards(scene) {
   hazardsGroup.add(rightHazard);
   if (rightHazard.body && rightHazard.body.updateFromGameObject) rightHazard.body.updateFromGameObject();
 }
-
 function updateHazards(scene) {
   const cam = scene.cameras.main;
   if (leftHazard) { leftHazard.y = cam.scrollY + 300; if (leftHazard.body && leftHazard.body.updateFromGameObject) leftHazard.body.updateFromGameObject(); }
   if (rightHazard) { rightHazard.y = cam.scrollY + 300; if (rightHazard.body && rightHazard.body.updateFromGameObject) rightHazard.body.updateFromGameObject(); }
 }
-
 function setHazardVisual(_scene) {
   const a = hazardOn ? 0.6 : 0.12;
   if (leftHazard) leftHazard.setFillStyle(0xff2222, a);
   if (rightHazard) rightHazard.setFillStyle(0xff2222, a);
 }
 
+// ====== AUDIO ======
 function playTone(scene, frequency, duration) {
   const audioContext = scene.sound.context;
   const oscillator = audioContext.createOscillator();
@@ -1775,7 +1785,7 @@ function playTone(scene, frequency, duration) {
   oscillator.stop(audioContext.currentTime + duration);
 }
 
-// MUSIC (opcional)
+// MUSIC (optional)
 function playBackgroundMusic(scene) {
   const audioContext = scene.sound.context;
   const tempo = 120;
@@ -1827,18 +1837,17 @@ function playBackgroundMusic(scene) {
    AUDIO DINÁMICO DE CARGA
    ========================= */
 function startChargeAudio(scene) {
-  stopChargeAudio(scene); // por seguridad
+  stopChargeAudio(scene);
   const ac = scene.sound.context;
   chargeOsc = ac.createOscillator();
   chargeGain = ac.createGain();
-  chargeOsc.type = 'sine'; // puedes cambiar a 'square' si prefieres
+  chargeOsc.type = 'sine';
   chargeOsc.frequency.value = CHARGE_AUDIO_MIN_HZ;
   chargeGain.gain.setValueAtTime(0.02, ac.currentTime);
   chargeOsc.connect(chargeGain);
   chargeGain.connect(ac.destination);
   chargeOsc.start();
 }
-
 function stopChargeAudio(scene) {
   const ac = scene?.sound?.context;
   const now = ac?.currentTime ?? 0;
@@ -1855,21 +1864,20 @@ function stopChargeAudio(scene) {
   chargeOsc = null;
   chargeGain = null;
 }
-
 function updateChargeAudio(scene) {
   if (!chargeOsc || !scene) return;
   const threshold = Math.max(1, CHARGE_THRESHOLD_MS);
   const elapsed = scene.time.now - chargeStartTime;
   const rawProgress = elapsed / threshold;
   const progress = Phaser.Math.Clamp(rawProgress, 0, 1);
-  const t = progress; // lineal; puedes cambiar a ease-in/out
+  const t = progress;
   const freq = CHARGE_AUDIO_MIN_HZ + (CHARGE_AUDIO_MAX_HZ - CHARGE_AUDIO_MIN_HZ) * t;
   const ac = scene.sound.context;
   chargeOsc.frequency.setValueAtTime(freq, ac.currentTime);
   if (!chargeAudioCompleted && progress >= 1) {
     chargeAudioCompleted = true;
-    stopChargeAudio(scene); // silencio al completar carga
-    // Si quieres un ping de "ready", descomenta:
+    stopChargeAudio(scene);
+    // Optional ready ping:
     // playTone(scene, 750, 0.06);
   }
 }
