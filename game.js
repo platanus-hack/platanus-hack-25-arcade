@@ -44,6 +44,11 @@ let currentShootKey = 'e';
 let currentRayKey = 'i';
 let selectedMode = 'challenger'; // 'normal' or 'challenger'
 
+// Game Over UI state
+let gameOverIndex = 0;
+let gameOverItems = [];
+let gameOverBorders = [];
+
 // Failsafe global state (hold P1A+P1B for N ms)
 let fsPrimaryDown = false;
 let fsSecondaryDown = false;
@@ -863,7 +868,15 @@ function create(data) {
   // Input handlers (arcade mapping)
   this.input.keyboard.on('keydown', (event) => {
     const key = KEYBOARD_TO_ARCADE[event.key] || event.key;
-    if (gameOver && (key === 'P1A' || key === 'START1')) { restartGame(scene); return; }
+    if (gameOver) {
+      if (key === 'P1U') { gameOverIndex = (gameOverIndex + gameOverItems.length - 1) % gameOverItems.length; updateGameOverVisuals(); return; }
+      if (key === 'P1D') { gameOverIndex = (gameOverIndex + 1) % gameOverItems.length; updateGameOverVisuals(); return; }
+      if (key === 'P1A' || key === 'START1') {
+        if (gameOverIndex === 0) { restartGame(scene); }
+        else if (gameOverIndex === 1) { scene.scene.start('menu'); }
+        return;
+      }
+    }
     if (key === 'P1L') keysState.left = true;
     if (key === 'P1R') keysState.right = true;
     if (key === 'P1U' && player && player.body && player.body.blocked.down) {
@@ -1138,59 +1151,243 @@ function endGame(scene) {
   if (scene.physics && scene.physics.world) scene.physics.world.pause();
   if (scene.cameras && scene.cameras.main) scene.cameras.main.stopFollow();
 
-  // Overlay
+  // Dark overlay with radial gradient effect
   const overlay = scene.add.graphics();
-  overlay.fillStyle(0x000000, 0.7);
+  overlay.fillStyle(0x000000, 0.88);
   overlay.fillRect(0, 0, 800, 600);
   overlay.setDepth(9999);
   overlay.setScrollFactor(0);
 
-  const titleText = scene.add.text(400, 70, 'CHAINFALL', {
-    fontSize: '42px',
+  // Add subtle scan lines for retro effect
+  const scanLines = scene.add.graphics();
+  for (let i = 0; i < 600; i += 4) {
+    scanLines.fillStyle(0x000000, 0.15);
+    scanLines.fillRect(0, i, 800, 2);
+  }
+  scanLines.setDepth(9999).setScrollFactor(0);
+
+  // Animated particles burst
+  for (let i = 0; i < 20; i++) {
+    const px = 400 + (Math.random() - 0.5) * 600;
+    const py = 300 + (Math.random() - 0.5) * 400;
+    const particle = scene.add.rectangle(px, py, 3, 3, 0xff0000, 0.8);
+    particle.setDepth(9998).setScrollFactor(0);
+    scene.tweens.add({
+      targets: particle,
+      alpha: 0,
+      scale: 0,
+      y: py - 100,
+      duration: 1500 + Math.random() * 1000,
+      ease: 'Cubic.easeOut',
+      onComplete: () => particle.destroy()
+    });
+  }
+
+  // Glowing title
+  const titleText = scene.add.text(400, 60, 'CHAINFALL', {
+    fontSize: '48px',
     fontFamily: 'Arial, sans-serif',
     color: '#ffffff',
     stroke: '#00ffff',
-    strokeThickness: 4
+    strokeThickness: 5
   }).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
-  scene.tweens.add({ targets: titleText, scale: { from: 1, to: 1.03 }, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  scene.tweens.add({ 
+    targets: titleText, 
+    scale: { from: 1, to: 1.05 }, 
+    duration: 1800, 
+    yoyo: true, 
+    repeat: -1, 
+    ease: 'Sine.easeInOut' 
+  });
 
   const cam = scene.cameras.main;
-  const cx = player ? (player.x - cam.scrollX) : 400;
-  const cy = player ? (player.y - cam.scrollY) : 300;
+  const cx = 400;
+  const cy = 200;
 
-  const gameOverText = scene.add.text(cx, cy, 'GAME OVER', {
-    fontSize: '64px',
+  // Epic GAME OVER text with glow
+  const gameOverGlow = scene.add.text(cx, cy, 'GAME OVER', {
+    fontSize: '72px',
     fontFamily: 'Arial, sans-serif',
     color: '#ff0000',
     align: 'center',
     stroke: '#ff6666',
+    strokeThickness: 12
+  }).setOrigin(0.5).setDepth(9999).setScrollFactor(0).setAlpha(0.3);
+  scene.tweens.add({ 
+    targets: gameOverGlow, 
+    scale: { from: 1.1, to: 1.2 }, 
+    alpha: { from: 0.2, to: 0.4 },
+    duration: 600, 
+    yoyo: true, 
+    repeat: -1, 
+    ease: 'Sine.easeInOut' 
+  });
+
+  const gameOverText = scene.add.text(cx, cy, 'GAME OVER', {
+    fontSize: '72px',
+    fontFamily: 'Arial, sans-serif',
+    color: '#ff3333',
+    align: 'center',
+    stroke: '#990000',
     strokeThickness: 8
   }).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
-  scene.tweens.add({ targets: gameOverText, scale: { from: 1, to: 1.1 }, alpha: { from: 1, to: 0.8 }, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  scene.tweens.add({ 
+    targets: gameOverText, 
+    scale: { from: 1, to: 1.08 }, 
+    duration: 800, 
+    yoyo: true, 
+    repeat: -1, 
+    ease: 'Sine.easeInOut' 
+  });
 
-  const finalScoreText = scene.add.text(cx, cy + 100, 'TOTAL SCORE: ' + score, {
-    fontSize: '36px', fontFamily: 'Arial, sans-serif', color: '#00ffff', stroke: '#000000', strokeThickness: 4
-  }).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
+  // Score panel with border
+  const scorePanelBg = scene.add.rectangle(cx, cy + 90, 400, 70, 0x0a0a1a, 0.85);
+  scorePanelBg.setStrokeStyle(3, 0x00ffff, 0.6);
+  scorePanelBg.setDepth(10000).setScrollFactor(0);
 
-  const restartText = scene.add.text(cx, cy + 180, 'Press ' + currentShootKey.toUpperCase() + ' to Restart', {
-    fontSize: '24px', fontFamily: 'Arial, sans-serif', color: '#ffff00', stroke: '#000000', strokeThickness: 3
-  }).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
-  scene.tweens.add({ targets: restartText, alpha: { from: 1, to: 0.3 }, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  const finalScoreLabel = scene.add.text(cx, cy + 75, 'FINAL SCORE', {
+    fontSize: '18px', 
+    fontFamily: 'Arial, sans-serif', 
+    color: '#aaaaaa', 
+    stroke: '#000000', 
+    strokeThickness: 2
+  }).setOrigin(0.5).setDepth(10001).setScrollFactor(0);
 
-  const menuBorder = scene.add.rectangle(cx, cy + 240, 240, 50, 0x001a1a, 0.6);
-  menuBorder.setStrokeStyle(2, 0x00ffff, 0.8);
+  const finalScoreText = scene.add.text(cx, cy + 100, score.toString(), {
+    fontSize: '42px', 
+    fontFamily: 'Arial, sans-serif', 
+    color: '#00ffff', 
+    stroke: '#004444', 
+    strokeThickness: 5
+  }).setOrigin(0.5).setDepth(10001).setScrollFactor(0);
+  scene.tweens.add({
+    targets: finalScoreText,
+    scale: { from: 0.95, to: 1.05 },
+    duration: 1200,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+
+  // Instructions text with pulse
+  const instructText = scene.add.text(cx, cy + 155, 'Use Arrow Keys  •  Press ' + currentShootKey.toUpperCase() + ' to Select', {
+    fontSize: '16px', 
+    fontFamily: 'Arial, sans-serif', 
+    color: '#ffff00', 
+    stroke: '#000000', 
+    strokeThickness: 3
+  }).setOrigin(0.5).setDepth(10001).setScrollFactor(0);
+  scene.tweens.add({ 
+    targets: instructText, 
+    alpha: { from: 0.6, to: 1 }, 
+    duration: 800, 
+    yoyo: true, 
+    repeat: -1, 
+    ease: 'Sine.easeInOut' 
+  });
+
+  // Retry button
+  const retryY = cy + 220;
+  const retryBorder = scene.add.rectangle(cx, retryY, 280, 60, 0x001a1a, 0.7);
+  retryBorder.setStrokeStyle(3, 0x00ff00, 0.9);
+  retryBorder.setDepth(10000).setScrollFactor(0);
+  
+  const retryGlow = scene.add.rectangle(cx, retryY, 280, 60, 0x00ff00, 0.1);
+  retryGlow.setDepth(9999).setScrollFactor(0);
+  scene.tweens.add({
+    targets: retryGlow,
+    alpha: { from: 0.1, to: 0.25 },
+    scale: { from: 1, to: 1.15 },
+    duration: 1000,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+
+  const retryBtn = scene.add.text(cx, retryY, '↻ RETRY', {
+    fontSize: '32px', 
+    fontFamily: 'Arial, sans-serif', 
+    color: '#00ff00', 
+    stroke: '#003300', 
+    strokeThickness: 4
+  }).setOrigin(0.5).setDepth(10001).setScrollFactor(0);
+
+  // Main Menu button
+  const menuY = cy + 300;
+  const menuBorder = scene.add.rectangle(cx, menuY, 280, 60, 0x001a1a, 0.7);
+  menuBorder.setStrokeStyle(3, 0x00ffff, 0.9);
   menuBorder.setDepth(10000).setScrollFactor(0);
-  const menuBtn = scene.add.text(cx, cy + 240, 'Main Menu', {
-    fontSize: '28px', fontFamily: 'Arial, sans-serif', color: '#00ffff', stroke: '#000000', strokeThickness: 3
-  }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(10001).setScrollFactor(0);
-  menuBtn.on('pointerover', () => {
-    menuBtn.setScale(1.15); menuBtn.setColor('#ffffff');
-    menuBorder.setScale(1.08); menuBorder.setStrokeStyle(3, 0xffffff, 1); menuBorder.setFillStyle(0x001a1a, 0.8);
-  });
-  menuBtn.on('pointerout', () => {
-    menuBtn.setScale(1); menuBtn.setColor('#00ffff');
-    menuBorder.setScale(1); menuBorder.setStrokeStyle(2, 0x00ffff, 0.8); menuBorder.setFillStyle(0x001a1a, 0.6);
-  });
+  
+  const menuGlow = scene.add.rectangle(cx, menuY, 280, 60, 0x00ffff, 0.1);
+  menuGlow.setDepth(9999).setScrollFactor(0);
+
+  const menuBtn = scene.add.text(cx, menuY, '⌂ MAIN MENU', {
+    fontSize: '32px', 
+    fontFamily: 'Arial, sans-serif', 
+    color: '#00ffff', 
+    stroke: '#003333', 
+    strokeThickness: 4
+  }).setOrigin(0.5).setDepth(10001).setScrollFactor(0);
+
+  // Store elements for navigation
+  gameOverItems = [retryBtn, menuBtn];
+  gameOverBorders = [retryBorder, menuBorder];
+  const gameOverGlows = [retryGlow, menuGlow];
+  gameOverIndex = 0;
+
+  // Update visuals function
+  window.updateGameOverVisuals = () => {
+    gameOverItems.forEach((item, idx) => {
+      const isSelected = idx === gameOverIndex;
+      const border = gameOverBorders[idx];
+      const glow = gameOverGlows[idx];
+      
+      if (isSelected) {
+        item.setScale(1.15);
+        item.setColor(idx === 0 ? '#ffffff' : '#ffffff');
+        border.setStrokeStyle(4, 0xffffff, 1);
+        border.setFillStyle(idx === 0 ? 0x003300 : 0x003333, 0.9);
+        border.setScale(1.1);
+        scene.tweens.killTweensOf(glow);
+        scene.tweens.add({
+          targets: glow,
+          alpha: { from: 0.3, to: 0.5 },
+          scale: { from: 1.1, to: 1.25 },
+          duration: 400,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      } else {
+        item.setScale(1);
+        item.setColor(idx === 0 ? '#00ff00' : '#00ffff');
+        border.setStrokeStyle(3, idx === 0 ? 0x00ff00 : 0x00ffff, 0.9);
+        border.setFillStyle(0x001a1a, 0.7);
+        border.setScale(1);
+        scene.tweens.killTweensOf(glow);
+        scene.tweens.add({
+          targets: glow,
+          alpha: { from: 0.1, to: 0.25 },
+          scale: { from: 1, to: 1.15 },
+          duration: 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
+    });
+    playTone(scene, 440, 0.05);
+  };
+
+  updateGameOverVisuals();
+
+  // Mouse interactions
+  retryBtn.setInteractive({ useHandCursor: true });
+  retryBtn.on('pointerover', () => { gameOverIndex = 0; updateGameOverVisuals(); });
+  retryBtn.on('pointerdown', () => { restartGame(scene); });
+
+  menuBtn.setInteractive({ useHandCursor: true });
+  menuBtn.on('pointerover', () => { gameOverIndex = 1; updateGameOverVisuals(); });
   menuBtn.on('pointerdown', () => { scene.scene.start('menu'); });
 }
 
