@@ -329,8 +329,8 @@ this.spawnPlat(V_W/2,START_Y+50,300,false);
 this.spawnCoffee(V_W/2-140,START_Y-160);
 this.spawnCoffee(V_W/2+120,START_Y-240);
 
-this.time.addEvent({delay:9000,loop:true,callback:()=>{
-this.diff=Math.min(this.diff+.18,3.5);
+this.time.addEvent({delay:6000,loop:true,callback:()=>{
+this.diff=Math.min(this.diff+.12,3.5);
 this.scrollSpd=Math.min(SCROLL_BASE+this.diff*.35,SCROLL_MAX);
 }});
 }
@@ -446,7 +446,11 @@ if(catsActive<4&&catCooldown>360&&Math.random()<catBase*s.diff){
 s.spawnCat(x+Phaser.Math.Between(-90,90),y-Phaser.Math.Between(20,70),s.getCatBehavior());
 s.lastCatSpawnTime=t;
 }
-if(Math.random()<.08*s.diff)s.spawnCoffee(x+Phaser.Math.Between(-70,70),y-80);
+const coffeeChance=s.boostTimer>0?0.03:0.1;
+if(Math.random()<coffeeChance*s.diff){
+const offset=s.fuel<30?Phaser.Math.Between(-140,140):Phaser.Math.Between(-70,70);
+s.spawnCoffee(x+offset,y-80);
+}
 s.nextY-=spacing/Math.max(s.diff*.6+1,1);
 }
 
@@ -539,11 +543,22 @@ if(behavior!=='runner'&&y-this.lastCatY<130)return;
 const c=this.cats.get(x,y,'gato');
 if(!c)return;
 if(c.moveTween){c.moveTween.stop();c.moveTween=null;}
+if(c.trailTimer){c.trailTimer.remove();c.trailTimer=null;}
+if(c.warning&&c.warning.destroy){c.warning.destroy();c.warning=null;}
 const dir=Math.random()<.5?-1:1;
 const clampX=Phaser.Math.Clamp(x,60,V_W-60);
 const catY=y-18;
+const warnColor=behavior==='runner'?0xff2250:behavior==='patrol'?0xff8800:0xff4ff0;
+const warning=this.add.circle(clampX,catY,18,warnColor,0).setDepth(5);
+warning.setStrokeStyle(3,warnColor,.85);
+this.tweens.add({targets:warning,radius:32,alpha:{from:.8,to:0},duration:300,ease:'Sine.Out',onComplete:()=>warning.destroy()});
+c.warning=warning;
+const tints={guard:0xff4ff0,patrol:0xff9800,runner:0xff2250};
+this.time.delayedCall(220,()=>{
+if(!warning.scene||this.over)return;
 c.enableBody(true,clampX,catY,true,true);
-c.setScale(.9).setDepth(4).setTint(0xff4ff0);
+const baseScale=behavior==='runner'?1.1:.9;
+c.setScale(baseScale).setDepth(4).setTint(tints[behavior]||0xff4ff0);
 c.body.setAllowGravity(false);
 c.body.setSize(22,18).setOffset(7,9);
 c.body.setVelocity(0);
@@ -553,21 +568,22 @@ if(behavior==='runner'){
 const start=dir<0?V_W-70:70;
 const end=dir<0?70:V_W-70;
 c.setX(start);
-c.moveTween=this.tweens.add({targets:c,x:end,duration:Phaser.Math.Between(1600,2100),yoyo:true,repeat:-1,ease:'Linear'});
+c.moveTween=this.tweens.add({targets:c,x:end,duration:Phaser.Math.Between(1500,1900),yoyo:true,repeat:-1,ease:'Linear'});
 }else if(behavior==='patrol'){
 const left=Phaser.Math.Clamp(clampX-90,60,V_W-60);
 const right=Phaser.Math.Clamp(clampX+90,60,V_W-60);
 const start=dir<0?right:left;
 const end=dir<0?left:right;
 c.setX(start);
-c.moveTween=this.tweens.add({targets:c,x:end,duration:Phaser.Math.Between(1200,1500),yoyo:true,repeat:-1,ease:'Linear'});
+c.moveTween=this.tweens.add({targets:c,x:end,duration:Phaser.Math.Between(1100,1400),yoyo:true,repeat:-1,ease:'Linear'});
 }else{
 const left=Phaser.Math.Clamp(clampX-36,60,V_W-60);
 const right=Phaser.Math.Clamp(clampX+36,60,V_W-60);
 c.setX(clampX);
-c.moveTween=this.tweens.add({targets:c,x:{from:left,to:right},duration:1100,yoyo:true,repeat:-1,ease:'Sine.InOut'});
+c.moveTween=this.tweens.add({targets:c,x:{from:left,to:right},duration:1000,yoyo:true,repeat:-1,ease:'Sine.InOut'});
 }
 this.lastCatY=y;
+});
 }
 spawnCoffee(x,y){
 const cup=this.coffees.get(x,y,'coffee');
@@ -599,7 +615,10 @@ hitC(_player,c){
 if(!c.active)return;
 c.scene.clearCatMotion(c);
 c.disableBody(true,true);
-this.fuel=Math.max(0,this.fuel-25);
+const penalty=this.boostTimer>0?15:25;
+this.fuel=Math.max(0,this.fuel-penalty);
+const dmgTxt=this.add.text(c.x,c.y-20,`-${penalty}`,{fontFamily:'monospace',fontSize:'20px',color:'#ff5555'}).setOrigin(.5).setDepth(6);
+this.tweens.add({targets:dmgTxt,y:dmgTxt.y-30,alpha:0,duration:600,ease:'Sine.Out',onComplete:()=>dmgTxt.destroy()});
 tone(this,150,.25,'sawtooth',.12);
 this.cameras.main.shake(140,.012);
 this.p.setTint(0xff3355);
@@ -629,6 +648,9 @@ cup.setAngle(0);
 clearCatMotion(cat){
 if(!cat)return;
 if(cat.moveTween){cat.moveTween.stop();cat.moveTween=null;}
+if(cat.trailTimer){cat.trailTimer.remove();cat.trailTimer=null;}
+if(cat.warning&&cat.warning.destroy){cat.warning.destroy();cat.warning=null;}
+cat.setScale(1);
 }
 emitDust(x,y){
 for(let i=0;i<5;i++){
