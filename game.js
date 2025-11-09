@@ -554,14 +554,14 @@ getCatBehavior(){
 const s=this.score;
 if(s>900){
 const r=Math.random();
-if(r<.05)return'stalker';
-if(r<.25)return'runner';
-if(r<.6)return'patrol';
-return'guard';
+if(r<.05)return 'stalker';
+if(r<.25)return 'runner';
+if(r<.6)return 'patrol';
+return 'guard';
 }
 if(s>600)return Math.random()<.4?'runner':'patrol';
 if(s>320)return Math.random()<.5?'patrol':'guard';
-return'guard';
+return 'guard';
 }
 spawnBanana(x,y){
 const b=this.bananas.get(x,y,'banana');
@@ -596,14 +596,14 @@ if(behavior==='runner'){
 const start=dir<0?V_W-70:70;
 const end=dir<0?70:V_W-70;
 c.setX(start);
-c.moveTween=this.tweens.add({targets:c,x=end,duration:Phaser.Math.Between(1500,1900),yoyo:true,repeat:-1,ease:'Linear'});
+c.moveTween=this.tweens.add({targets:c,x:end,duration:Phaser.Math.Between(1500,1900),yoyo:true,repeat:-1,ease:'Linear'});
 }else if(behavior==='patrol'){
 const left=Phaser.Math.Clamp(clampX-90,60,V_W-60);
 const right=Phaser.Math.Clamp(clampX+90,60,V_W-60);
 const start=dir<0?right:left;
 const end=dir<0?left:right;
 c.setX(start);
-c.moveTween=this.tweens.add({targets:c,x=end,duration:Phaser.Math.Between(1100,1400),yoyo:true,repeat:-1,ease:'Linear'});
+c.moveTween=this.tweens.add({targets:c,x:end,duration:Phaser.Math.Between(1100,1400),yoyo:true,repeat:-1,ease:'Linear'});
 }else if(behavior==='stalker'){
 const vert=120;
 c.setX(clampX);
