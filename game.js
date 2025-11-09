@@ -187,9 +187,20 @@ function menuCreate() {
     if (s.instructionsJustOpened) return;
     const raw = ev.key;
     const key = KEYBOARD_TO_ARCADE[raw] || raw;
-    if (raw === 'Escape' || key === 'P1B') { hideInstructions(s); return; }
-    if (key === 'P1U' || key === 'P1D' || key === 'P1L' || key === 'P1R') { s.instrIndex = 0; updateInstrVisuals(s); return; }
-    if (key === 'P1A') { hideInstructions(s); }
+    if (raw === 'Escape' || key === 'P1B') { hideInstructions(s); if (ev.stopPropagation) ev.stopPropagation(); return; }
+    if (key === 'P1U' || key === 'P1D' || key === 'P1L' || key === 'P1R') { s.instrIndex = 0; updateInstrVisuals(s); if (ev.stopPropagation) ev.stopPropagation(); return; }
+    // P1A close moved to keyup only to avoid keyboard repeat issues
+    if (ev.stopPropagation) ev.stopPropagation();
+  });
+  s.input.keyboard.on('keyup', (ev) => {
+    if (!s.instructionsVisible) return;
+    if (s.instructionsJustOpened) return;
+    const raw = ev.key;
+    const key = KEYBOARD_TO_ARCADE[raw] || raw;
+    if (raw === 'Escape' || key === 'P1B' || key === 'P1A') {
+      hideInstructions(s);
+      if (ev.stopPropagation) ev.stopPropagation();
+    }
   });
 
   // ===== Controls overlay (hidden by default) =====
@@ -229,6 +240,37 @@ function menuCreate() {
   s.controlsBorders = [cShootBorder, cRayBorder, cBackBorder];
   s.controlsIndex = 0; updateControlsVisuals(s); hideControls(s);
 
+  // Panel key handling: Controls (navigation, back and rebinding)
+  s.input.keyboard.on('keydown', (ev) => {
+    if (!s.controlsVisible) return;
+    if (s.controlsJustOpened) return;
+    const raw = ev.key;
+    const key = KEYBOARD_TO_ARCADE[raw] || raw;
+    if (raw === 'Escape' || key === 'P1B') { hideControls(s); return; }
+    if (key === 'P1U') { s.controlsIndex = (s.controlsIndex + s.controlsItems.length - 1) % s.controlsItems.length; updateControlsVisuals(s); return; }
+    if (key === 'P1D') { s.controlsIndex = (s.controlsIndex + 1) % s.controlsItems.length; updateControlsVisuals(s); return; }
+    // P1A close moved to separate keyup handler to avoid keyboard repeat issues
+    // Rebind when a single printable key is pressed
+    if (raw && raw.length === 1) {
+      const k = raw.toLowerCase();
+      if (s.controlsIndex === 0) {
+        rebindShootKey(k);
+        if (s.controlsItems[0] && s.controlsItems[0].setText) s.controlsItems[0].setText('Normal Shoot: ' + currentShootKey.toUpperCase());
+      } else if (s.controlsIndex === 1) {
+        rebindRayKey(k);
+        if (s.controlsItems[1] && s.controlsItems[1].setText) s.controlsItems[1].setText('Ray Gun: ' + currentRayKey.toUpperCase());
+      }
+      return;
+    }
+  });
+  s.input.keyboard.on('keyup', (ev) => {
+    if (!s.controlsVisible) return;
+    if (s.controlsJustOpened) return;
+    const raw = ev.key;
+    const key = KEYBOARD_TO_ARCADE[raw] || raw;
+    if (key === 'P1A' && s.controlsIndex === 2) { hideControls(s); return; }
+  });
+
   // Mode Select overlay (hidden by default)
   buildModeSelectOverlay(s);
   hideModeSelect(s);
@@ -246,12 +288,14 @@ function menuCreate() {
   });
   // Failsafe key tracking (menu scene)
   s.input.keyboard.on('keydown', (ev) => {
+    if (s.instructionsVisible || s.controlsVisible || s.modeVisible) return;
     const key = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
     if (key === 'P1A') fsPrimaryDown = true;
     if (key === 'P1B') fsSecondaryDown = true;
     if (fsPrimaryDown && fsSecondaryDown && failsafeStartTime === 0) failsafeStartTime = s.time.now;
   });
   s.input.keyboard.on('keyup', (ev) => {
+    if (s.instructionsVisible || s.controlsVisible || s.modeVisible) return;
     const key = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
     if (key === 'P1A') fsPrimaryDown = false;
     if (key === 'P1B') fsSecondaryDown = false;
@@ -259,7 +303,11 @@ function menuCreate() {
   });
 }
 
-function menuUpdate() { checkFailsafe(this); }
+function menuUpdate() {
+  // Avoid triggering failsafe while overlays are open in menu
+  if (this.instructionsVisible || this.controlsVisible || this.modeVisible) return;
+  checkFailsafe(this);
+}
 
 // ===== Failsafe: hold primary+secondary for N ms to return to menu =====
 function checkFailsafe(scene) {
@@ -330,11 +378,12 @@ function showInstructions(s) {
   s.instrIndex = 0;
   updateInstrVisuals(s);
   s.instructionsJustOpened = true;
-  setTimeout(() => { s.instructionsJustOpened = false; }, 50);
+  setTimeout(() => { s.instructionsJustOpened = false; }, 300);
 }
 function hideInstructions(s) {
   s.instructionsVisible = false;
   s.instructionsGroup.setVisible(false);
+  s.instructionsJustOpened = false;
 }
 function showControls(s) {
   s.controlsVisible = true;
@@ -342,11 +391,12 @@ function showControls(s) {
   s.controlsIndex = 0;
   updateControlsVisuals(s);
   s.controlsJustOpened = true;
-  setTimeout(() => { s.controlsJustOpened = false; }, 50);
+  setTimeout(() => { s.controlsJustOpened = false; }, 300);
 }
 function hideControls(s) {
   s.controlsVisible = false;
   s.controlsGroup.setVisible(false);
+  s.controlsJustOpened = false;
 }
 
 // ===== Mode Select overlay =====
