@@ -1,3 +1,4 @@
+let gameStartTime = 0;
 // POTASIUMABYSS - Platanus Hack 25
 // ARCADE CONTROLS (Player 1 only: WASD + U/I/O/J/K/L)
 const ARCADE_CONTROLS = {
@@ -34,12 +35,12 @@ const AI = {
 
 // GAME DATA - Zone data: [name, common, commonVal, rare, rareVal, smallE, smallHP[3], smallDmg[3], bigE, bigHP, bigDmg[3], chest, color, aiType]
 const ZONES = {
-  0: ['BOSQUE', 'HIERRO', 10, 'PLATA', 50, 'RATONCITO', [2,10,25], [1,10,3], 'TROLL', 50, [2,10,5], 30, 0x2D5016, 'RAT'],
-  1: ['MINAS OLVIDADAS', 'ORO', 25, 'ESMERALDA', 150, 'RATATA', [2,10,40], [2,10,5], 'GOLEM', 80, [3,10,8], 75, 0x4A4A4A, 'GOLEM'],
-  2: ['LAS PROFUNDIDADES', 'DIAMANTE', 50, 'RUBI', 300, 'WAREN', [3,10,100], [2,10,8], 'DEMON', 200, [4,10,5], 150, 0x2C1810, 'DEMON'],
-  3: ['INFIERNO', 'PIEDRA INFERNAL', 100, 'ZAFIRO', 600, 'DIABLILLO', [4,10,150], [3,10,5], 'DRAGON', 300, [4,10,15], 300, 0x8B0000, 'DRAGON'],
-  4: ['ABISMO', 'PIEDRA ABISMAL', 1000, 'CRISTAL-SOMBRA', 8000, 'ALMA EN PENA', [5,10,550], [5,10,20], 'TROLL ABYSS', 880, [10,15,40], 4000, 0x1A0033, 'ALMA'],
-  5: ['???', null, 0, 'CORAZON-ABYSS', 30000, 'ALMA EN PENA', [8,10,63], [9,10,45], 'HEROE CORRUPTO', 2100, [15,20,80], 15000, 0x000000, 'BOSS']
+  0: ['BOSQUE', 'HIERRO', 10, 'PLATA', 50, 'RATONCITO', 38, [1,10,3], 'TROLL', 75, [2,10,5], 30, 0x2D5016, 'RAT'],
+  1: ['MINAS OLVIDADAS', 'ORO', 25, 'ESMERALDA', 150, 'RATATA', 78, [2,10,5], 'GOLEM', 120, [3,10,8], 75, 0x4A4A4A, 'GOLEM'],
+  2: ['LAS PROFUNDIDADES', 'DIAMANTE', 50, 'RUBI', 300, 'WAREN', 400, [2,10,8], 'DEMON', 400, [4,10,5], 150, 0x2C1810, 'DEMON'],
+  3: ['INFIERNO', 'PIEDRA INFERNAL', 100, 'ZAFIRO', 600, 'DIABLILLO', 600, [3,10,5], 'DRAGON', 700, [4,10,15], 300, 0x8B0000, 'DRAGON'],
+  4: ['ABISMO', 'PIEDRA ABISMAL', 1000, 'CRISTAL-SOMBRA', 8000, 'ALMA EN PENA', 700, [5,10,20], 'TROLL ABYSS', 1000, [10,15,40], 4000, 0x1A0033, 'ALMA'],
+  5: ['???', null, 0, 'CORAZON-ABYSS', 30000, 'ALMA EN PENA', 79, [9,10,45], 'HEROE CORRUPTO', 3000, [15,20,80], 15000, 0x000000, 'BOSS']
 };
 
 // Zone array indices (optimized access)
@@ -106,7 +107,7 @@ const INPUT_DEBOUNCE_MS = 150; // Minimum time between inputs
 let canAttack = true;
 let graphics, scene, texts = {};
 let runMoney = 0;
-let upgradePrices = { hp: 50, dmg: 80, speed: 60, timing: 150, mining: 120 };
+let upgradePrices = { hp: 50, dmg: 100, speed: 33, timing: 200, mining: 99 }
 let upgradeLevel = { timing: 0 };
 let shakeAmt = 0;
 let particles = [];
@@ -500,12 +501,17 @@ function create() {
   const tempGraphics = this.add.graphics();
   // Create a simple miner shape: head + body + pickaxe
   tempGraphics.fillStyle(0x8B4513); // Brown color
-  tempGraphics.fillRect(8, 8, 16, 16); // Body
+  tempGraphics.fillRect(12, 8, 8, 16); // Body (50% más flaco)
   tempGraphics.fillStyle(0xFFD700); // Gold helmet
-  tempGraphics.fillRect(10, 4, 12, 8); // Head/helmet
+  tempGraphics.beginPath();
+  tempGraphics.arc(16, 8, 6, Math.PI, 2 * Math.PI, false); // Semicircle helmet
+  tempGraphics.closePath();
+  tempGraphics.fillPath();
+  tempGraphics.fillStyle(0xFFD7A0); // Skin color for face
+  tempGraphics.fillRect(10, 8, 12, 4); // Head/face
   tempGraphics.fillStyle(0x444444); // Dark gray pickaxe
-  tempGraphics.fillRect(24, 10, 6, 2); // Pickaxe handle
-  tempGraphics.fillRect(28, 6, 2, 8); // Pickaxe head
+  tempGraphics.fillRect(24, 17, 6, 2); // Pickaxe handle (7px más abajo)
+  tempGraphics.fillRect(28, 13, 2, 8); // Pickaxe head (7px más abajo)
   tempGraphics.generateTexture('miner', 32, 32);
   tempGraphics.destroy();
 
@@ -905,6 +911,7 @@ function update(time, delta) {
     }
   }
   
+  
   if (state === 'GAME') {
   drawGame();
     
@@ -921,6 +928,9 @@ function update(time, delta) {
           // Rata dispara MUCHO más rápido: 1.2s (zona 0) -> 0.2s (zona 4 ABISMO)
           enemy.shootTimer = 1.2 - (zone * 0.25);
           projectiles.push({ x: 600, y: targetY, dmg: 1, life: 3.0, vx: -200 * speedMult, vy: 0, type: 'normal' });
+          // Segundo proyectil homing al jugador
+          const angle = Math.atan2(player.pos - 300, player.x - 600);
+          projectiles.push({ x: 600, y: 300, dmg: 1, life: 3.0, vx: Math.cos(angle) * 200 * speedMult, vy: Math.sin(angle) * 200 * speedMult, type: 'normal' });
           play(800, 0.1);
         } else if (aiType === 'alma') {
           // Alma dispara MUCHO más rápido: 1.0s (zona 0) -> 0.15s (zona 4 ABISMO)
@@ -938,14 +948,14 @@ function update(time, delta) {
         const aiType = AI[ZONES[zone][Z.AI]].bigType;
         
         if (aiType === 'troll') {
-          enemy.attackTimer = 2.8;
+          enemy.attackTimer = 1.6; // Reducido para atacar más seguido
           enemy.attacking = Math.random() < 0.5 ? 'upper' : 'lower';
           enemy.attackWarn = 1.2;
           play(150, 0.4, 'sawtooth');
         }
         else if (aiType === 'demon') {
           // DEMON: Zone attack + 7 projectiles aimed at player with 15° spread
-          enemy.attackTimer = 2.8;
+          enemy.attackTimer = 1.8;
           enemy.attacking = Math.random() < 0.5 ? 'upper' : 'lower';
           enemy.attackWarn = 1.2;
           play(150, 0.4, 'sawtooth');
@@ -965,7 +975,7 @@ function update(time, delta) {
           }
         }
         else if (aiType === 'troll_abyss') {
-          enemy.attackTimer = 1.0;
+          enemy.attackTimer = 0.8;
           enemy.attacking = 'zone';
           // Target zone on player position (forces constant movement)
           const zoneW = 80; // Zone width
@@ -989,7 +999,8 @@ function update(time, delta) {
           play(150, 0.4, 'sawtooth');
         }
         else if (aiType === 'golem') {
-          enemy.attackTimer = 3.5;
+          enemy._lineYs = null;
+          enemy.attackTimer = 1.8;
           enemy.attacking = 'line';
           // TRIPLE LINE ATTACK - 3 horizontal lines cascading down
           enemy.attackLineY = 200 + Math.random() * 100; // First line: 200-300
@@ -1000,7 +1011,7 @@ function update(time, delta) {
           play(100, 0.5, 'sawtooth');
         }
         else if (aiType === 'dragon') {
-          enemy.attackTimer = 3.2;
+          enemy.attackTimer = 3;
           // Ataque combinado: Zona trasera (más ancha) + Zona centro + Proyectiles con spread
           enemy.attacking = 'zone';
           enemy.attackZoneX = 50; // Borde izquierdo
@@ -1026,9 +1037,9 @@ function update(time, delta) {
             }, i * 50); // Delay más corto: 50ms entre proyectiles
           }
           play(300, 0.5, 'sawtooth');
-        }
+        }// realmente este es el jefe final boss heroe no es un dragon pero quedo el nombre por legacy
         else if (aiType === 'dragon_boss') {
-          enemy.attackTimer = 1.2; // Reducido de 1.5 a 1.2 (ataca más frecuente)
+          enemy.attackTimer = 1.1; // Reducido de 1.5 a 1.2 (ataca más frecuente)
           enemy.attacking = 'zone';
           // Player area: X(50-450), Y(200-400) = 400x200px
           // Cubrir el área izquierda/derecha que NO cubren los proyectiles (que van al centro)
@@ -1077,7 +1088,7 @@ function update(time, delta) {
           const attackMinY = enemy.attacking === 'upper' ? 200 : 300;
           const attackMaxY = enemy.attacking === 'upper' ? 300 : 400;
 
-          if (player.x >= 0 && player.x <= 400 &&
+          if (player.x >= 0 && player.x <= 520 &&
               player.pos >= attackMinY && player.pos <= attackMaxY) {
             takeDmg();
             if (state === 'GAMEOVER') return; // Salir inmediatamente si murió
@@ -1087,22 +1098,15 @@ function update(time, delta) {
           }
         }
         else if (enemy.attacking === 'line') {
-          // GOLEM: Triple line cascade attack
+          // GOLEM: Triple line cascade attack (sincronizado con visual)
           let hit = false;
-          // Check first line
-          if (player.x >= 0 && player.x <= 400 &&
-              player.pos >= enemy.attackLineY && player.pos <= enemy.attackLineY + 50) {
-            hit = true;
-          }
-          // Check second line
-          if (player.x >= 0 && player.x <= 400 && enemy.attackLineY2 &&
-              player.pos >= enemy.attackLineY2 && player.pos <= enemy.attackLineY2 + 50) {
-            hit = true;
-          }
-          // Check third line
-          if (player.x >= 0 && player.x <= 400 && enemy.attackLineY3 &&
-              player.pos >= enemy.attackLineY3 && player.pos <= enemy.attackLineY3 + 50) {
-            hit = true;
+          if (enemy._lineYs) {
+            for (let i = 0; i < enemy._lineYs.length; i++) {
+              if (player.x >= 0 && player.x <= 520 &&
+                  player.pos >= enemy._lineYs[i] && player.pos <= enemy._lineYs[i] + 50) {
+                hit = true;
+              }
+            }
           }
           if (hit) {
             takeDmg();
@@ -1149,7 +1153,6 @@ function update(time, delta) {
           if (enemy) {
             enemy.attacking = null;
             enemy.golemShake = false;
-            enemy.dragonBreath = false;
             // Clear zone attack variables
             enemy.attackZoneX = undefined;
             enemy.attackZoneY = undefined;
@@ -1203,8 +1206,8 @@ function drawGame() {
     playerSprite.setVisible(true);
     
     // Pickaxe swing animation
-    const pickSwing = !canAttack ? Math.sin(attackTimer / player.cooldown * Math.PI) * 15 : 0;
-    playerSprite.setRotation(pickSwing * 0.01); // Subtle rotation during attack
+  const pickSwing = !canAttack ? Math.sin(attackTimer / player.cooldown * Math.PI * 4) * -15 * 0.5 : 0; // Giro invertido y más rápido
+  playerSprite.setRotation(pickSwing * 0.25); // Giro brutalmente exagerado
   }
   
   // Attack cooldown bar with glow
@@ -1275,6 +1278,14 @@ function drawOre() {
 
   const ox = 600;
   const oy = 300;
+  // Escala la vida del mineral una vez según la zona (+25% por zona)
+  if (!ore._scaled) {
+    const factor = 1 + zone * 0.25; // ajusta aquí el incremento por zona
+    ore.maxHp = Math.max(1, Math.round(ore.maxHp * factor));
+    ore.hp = Math.min(ore.maxHp, Math.max(1, Math.round(ore.hp * factor)));
+    ore._scaled = true;
+  }
+
   const dmgPct = ore.hp / ore.maxHp;
   const alpha = 0.3 + (dmgPct * 0.7);
 
@@ -1358,34 +1369,35 @@ function drawEnemy() {
       if (enemy.attacking === 'upper') {
         // TROLL: Warning for upper section
         graphics.fillStyle(0xff0000, pulse);
-        graphics.fillRect(0, 200, 400, 100); // Upper playable area
-        graphics.lineStyle(3, 0xff0000, 0.8);
-        graphics.strokeRect(0, 200, 400, 100);
+  graphics.fillRect(0, 200, 520, 100); // Upper playable area (ancho igual al golem)
+  graphics.lineStyle(3, 0xff0000, 0.8);
+  graphics.strokeRect(0, 200, 520, 100);
       }
       else if (enemy.attacking === 'lower') {
         // TROLL: Warning for lower section
         graphics.fillStyle(0xff0000, pulse);
-        graphics.fillRect(0, 300, 400, 100); // Lower playable area
-        graphics.lineStyle(3, 0xff0000, 0.8);
-        graphics.strokeRect(0, 300, 400, 100);
+  graphics.fillRect(0, 300, 520, 100); // Lower playable area (ancho igual al golem)
+  graphics.lineStyle(3, 0xff0000, 0.8);
+  graphics.strokeRect(0, 300, 520, 100);
       }
       else if (enemy.attacking === 'line') {
         // GOLEM: Triple horizontal line cascade attack
         graphics.fillStyle(0xff0000, pulse);
         graphics.lineStyle(3, 0xff0000, 0.8);
-        // First line
-        graphics.fillRect(0, enemy.attackLineY, 400, 50);
-        graphics.strokeRect(0, enemy.attackLineY, 400, 50);
-        // Second line
-        if (enemy.attackLineY2 && enemy.attackLineY2 <= 400) {
-          graphics.fillRect(0, enemy.attackLineY2, 400, 50);
-          graphics.strokeRect(0, enemy.attackLineY2, 400, 50);
-        }
-        // Third line
-        if (enemy.attackLineY3 && enemy.attackLineY3 <= 400) {
-          graphics.fillRect(0, enemy.attackLineY3, 400, 50);
-          graphics.strokeRect(0, enemy.attackLineY3, 400, 50);
-        }
+          // Draw 3 lines at random Y positions in range 200-400, with spacing
+          if (!enemy._lineYs) {
+            // Generate 3 random Y positions, sorted for visual order
+            const ys = [];
+            for (let i = 0; i < 3; i++) {
+              ys.push(200 + Math.random() * 200);
+            }
+            ys.sort((a, b) => a - b);
+            enemy._lineYs = ys;
+          }
+          enemy._lineYs.forEach(y => {
+            graphics.fillRect(0, y, 520, 50);
+            graphics.strokeRect(0, y, 520, 50);
+          });
       }
       else if (enemy.attacking === 'zone') {
         // ABYSS ENEMIES: Warning for random zone attack
@@ -1401,13 +1413,7 @@ function drawEnemy() {
           graphics.strokeRect(enemy.attackZone2X, enemy.attackZone2Y, enemy.attackZone2W, enemy.attackZone2H);
         }
       }
-      else if (enemy.dragonBreath) {
-        // DRAGON: Cone warning for focused fire breath
-        graphics.fillStyle(0xff4400, pulse * 0.8);
-        graphics.fillRect(200, 100, 400, 400); // Large cone area
-        graphics.lineStyle(4, 0xff4400, 0.9);
-        graphics.strokeRect(200, 100, 400, 400);
-      }
+      
     }
     
     texts.event.setText(`${enemy.name}`).setVisible(true);
@@ -1596,15 +1602,18 @@ function handleInput(event) {
         }
       } else if (shopSelection === 4) {
         // Buy SPEED (Movement + Attack Speed)
+        if (player.cooldown <= 0.1) {
+          play(150, 0.2);
+          return;
+        }
         if (player.money >= upgradePrices.speed) {
           player.money -= upgradePrices.speed;
-          player.moveSpeed = Math.floor(player.moveSpeed * 1.12); // +12% movement speed (aumentado de 10%)
-          player.cooldown = Math.max(0.1, player.cooldown - 0.12); // -0.12s cooldown (aumentado de 0.1s)
+          player.cooldown = Math.max(0.1, player.cooldown - 0.2); // Solo velocidad de ataque, -0.2s cooldown
           upgradePrices.speed = Math.floor(upgradePrices.speed * 2.0);
-          showBigText('MAS VELOCIDAD!', 400, 200, '#00ffff', 44, 2000);
+          showBigText('MAS VELOCIDAD DE ATAQUE!', 400, 200, '#00ffff', 44, 2000);
           play(1200, 0.3);
           updateShopText();
-  } else {
+        } else {
           play(150, 0.2);
         }
       } else if (shopSelection === 5) {
@@ -1637,12 +1646,12 @@ function handleInput(event) {
         state = 'GAME';
         currentEvent = null;
         shopSelection = 0;
-        
+        lastEventWasChest = false; // Reset flag after using it
         // Advance to next event (reward for clearing the room that unlocked shop)
         if (!lastEventWasChest) {
           eventNum++;
         }
-        lastEventWasChest = false; // Reset flag after using it
+        
         
         // Check if zone is complete
         if (eventNum >= getMaxEvents(zone)) {
@@ -1738,7 +1747,7 @@ function doAction() {
       updateGameUI();
     } else {
       // Just show feedback for chests (no damage or treasure loss)
-      showBigText('Chocas las manos con el cofre.....', 400, 200, '#ffaa00', 32);
+      showBigText('Nadie te ve hacer el ridiculo.....', 400, 200, '#ffaa00', 32);
       play(200, 0.15);
     }
 
@@ -1962,7 +1971,7 @@ function openChest() {
     } else if (rand < 0.8) {
       // 40% - +1 Damage
       player.dmg += 1;
-      showBigText('⚔️ PICO MAS GRANDE +1 DMG! ⚔️', 600, 280, '#ff4400', 48);
+      showBigText('⚔️ PICO AFILADO +1! ⚔️', 600, 280, '#ff4400', 48);
       play(1200, 0.6, 'sawtooth');
       spawnParticles(600, 300, 0xff4400, 40);
       shake(18);
@@ -2314,6 +2323,7 @@ function selectDirection(choice) {
 }
 
 function nextEvent() {
+  projectiles = [];
   // Randomize timing zone position for new event
   updateTimingZone();
   
@@ -2407,7 +2417,7 @@ function spawnEnemy() {
     };
   } else {
     // Small enemy
-    const hp = roll(ZONES[zone][Z.SMALL_HP][0], ZONES[zone][Z.SMALL_HP][1], ZONES[zone][Z.SMALL_HP][2]);
+    const hp = ZONES[zone][Z.SMALL_HP];
     enemy = {
       type: 'small',
       name: ZONES[zone][Z.SMALL_E],
@@ -2451,6 +2461,7 @@ function startGame() {
   hideMenu();
   showGameUI();
   startGameMusic(); // Start background music synchronized with timing
+  gameStartTime = Date.now();
   nextEvent();
 }
 
@@ -2517,7 +2528,7 @@ function resetGame() {
 
   // Money and upgrades
   runMoney = 0;
-  upgradePrices = { hp: 50, dmg: 100, speed: 75, timing: 200, mining: 150 };
+  upgradePrices = { hp: 50, dmg: 100, speed: 33, timing: 200, mining: 99 };
   upgradeLevel = { timing: 0 };
   updateTimingZone(); // Reset timing zone to base values
   shopSelection = 0;
@@ -2744,7 +2755,7 @@ function updateShopText() {
     { name: '🍌 Estofado de Potasio', price: 25, info: 'Rellena tus corazones', color: '#ffdd44', cat: '🍽️' },
     { name: '❤️ Entrenamiento Fisico', price: upgradePrices.hp, info: `FULL TANK +1 Corazon [${player.hp}/${player.maxHp} HP]`, color: '#ff5555', cat: '💪' },
     { name: '⚔️ Afilar Herramientas', price: upgradePrices.dmg, info: `Pico mas letal (+DMG)(+3d6) [${(1 + player.dmg)}-${(10 + player.dmg * 2)}]`, color: '#ff8833', cat: '🔨' },
-    { name: '⚡ Cerveza Energizante', price: upgradePrices.speed, info: `Movimiento y ataque mas rapidos [${player.cooldown.toFixed(1)}s]`, color: '#44ddff', cat: '🍺' },
+  { name: '⚡ Cerveza Energizante', price: upgradePrices.speed, info: `Attack Speed [${player.cooldown.toFixed(1)}s]`, color: '#44ddff', cat: '🍺' },
     { name: '🎯 Leccion de Precision', price: upgradePrices.timing, info: `Mejora tu punteria (ZONA VERDE MAS GRANDE) (Nivel ${upgradeLevel.timing})`, color: '#ffdd44', cat: '📜' },
     { name: '⛏️ Pico Suertudo', price: upgradePrices.mining, info: `Minerales dan +50% mas recursos permanente [+${Math.floor(player.miningBonus * 100)}%]`, color: '#00ffaa', cat: '💎' },
     { name: '🚪 Volver a las Minas', price: 0, info: 'Regresar al abismo oscuro...', color: '#88ff88', cat: '�' }
@@ -2851,9 +2862,9 @@ function showGameOver() {
   // Limpiar todos los estados de juego
   currentEvent = null;
   projectiles = [];
-  // Destroy particle sprites before clearing array
   particles.forEach(p => p.destroy());
   particles = [];
+  if(graphics) graphics.clear(); // Limpia el canvas para evitar restos
   
   // Limpiar y ocultar sprites de enemigos
   enemySprites.forEach(sprite => {
@@ -2872,15 +2883,17 @@ function showGameOver() {
   chest = null;
   
   hideGame();
-//el texto es muy grande asi que hay que subirlo mas de lo que parece
+// el texto es muy grande asi que hay que subirlo mas de lo que parece
   texts.title.setText('Otro Deshecho en el ABYSS').setVisible(true).setPosition(400, 70);
   texts.title.setFontSize('48px');
   texts.title.setColor('#cc3333');
   
+  const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
   texts.subtitle.setText(
     `Profundidad Alcanzada: ${ZONES[zone][0]}\n\n` +
     `Score Total: $${runMoney}\n\n` +
-    `Oro Final: $${player.money}\n\n\n` +
+    `Oro Final: $${player.money}\n\n` +
+    `Tiempo total: ${elapsed} segundos\n\n` +
     `PRESIONA START PARA DESCENDER DE NUEVO`
   ).setVisible(true).setPosition(400, 340).setColor('#ff6666');
   
@@ -2905,10 +2918,12 @@ function showVictory() {
   // Use the last valid zone (5) if zone exceeds the array
   const finalZone = Math.min(zone, 5);
   
+  const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
   texts.subtitle.setText(
     `Profundidad Alcanzada: ${ZONES[finalZone][0]}\n\n` +
     `Score Total: $${runMoney}\n\n` +
-    `Oro Final: $${player.money}\n\n\n` +
+    `Oro Final: $${player.money}\n\n` +
+    `Tiempo total: ${elapsed} segundos\n\n` +
     `PRESIONA START PARA DESCENDER DE NUEVO`
   ).setVisible(true).setPosition(400, 280).setColor('#ffed4e');
   
