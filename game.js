@@ -103,7 +103,7 @@ let mineralsInZone = 0; // Track minerals spawned in current zone (max 3)
 let eventNum = 0;
 let currentEvent = null;
 // DMG SET TO 333 FOR TESTING every 333 config on normal should be 1
-let player = { hp: 1, maxHp: 1, dmg: 333, cooldown: 0.6, moveSpeed: 250, money: 0, treasures: 0, pos: 300, x: 150, combo: 0 }; // Y: 200-400, X: 50-350
+let player = { hp: 1, maxHp: 1, dmg: 1, cooldown: 0.6, moveSpeed: 250, money: 0, treasures: 0, pos: 300, x: 150, combo: 0 }; // Y: 200-400, X: 50-350
 let enemy = null;
 let ore = null;
 let chest = null;
