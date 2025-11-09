@@ -1,6 +1,4 @@
 // POTASIUMABYSS - Platanus Hack 25
-// A gambling roguelike mining arcade game
-
 // ARCADE CONTROLS (Player 1 only: WASD + U/I/O/J/K/L)
 const ARCADE_CONTROLS = {
   'P1U': ['w'],
@@ -38,10 +36,10 @@ const AI = {
 const ZONES = {
   0: ['BOSQUE', 'HIERRO', 10, 'PLATA', 50, 'RATONCITO', [2,10,25], [1,10,3], 'TROLL', 50, [2,10,5], 30, 0x2D5016, 'RAT'],
   1: ['MINAS OLVIDADAS', 'ORO', 25, 'ESMERALDA', 150, 'RATATA', [2,10,40], [2,10,5], 'GOLEM', 80, [3,10,8], 75, 0x4A4A4A, 'GOLEM'],
-  2: ['LAS PROFUNDIDADES', 'DIAMANTE', 50, 'RUBI', 300, 'WAREN', [2,10,60], [2,10,8], 'DEMON', 120, [4,10,5], 150, 0x2C1810, 'DEMON'],
-  3: ['INFIERNO', 'PIEDRA INFERNAL', 100, 'ZAFIRO', 600, 'DIABLILLO', [3,10,90], [3,10,5], 'DRAGON', 180, [4,10,15], 300, 0x8B0000, 'DRAGON'],
-  4: ['ABISMO', 'PIEDRA ABISMAL', 1000, 'CRISTAL-SOMBRA', 8000, 'ALMA EN PENA', [5,10,500], [5,10,20], 'TROLL ABYSS', 800, [10,15,40], 4000, 0x1A0033, 'ALMA'],
-  5: ['???', null, 0, 'CORAZON-ABYSS', 30000, 'ALMA EN PENA', [8,10,60], [9,10,45], 'HEROE CORRUPTO', 2000, [15,20,80], 15000, 0x000000, 'BOSS']
+  2: ['LAS PROFUNDIDADES', 'DIAMANTE', 50, 'RUBI', 300, 'WAREN', [3,10,100], [2,10,8], 'DEMON', 200, [4,10,5], 150, 0x2C1810, 'DEMON'],
+  3: ['INFIERNO', 'PIEDRA INFERNAL', 100, 'ZAFIRO', 600, 'DIABLILLO', [4,10,150], [3,10,5], 'DRAGON', 300, [4,10,15], 300, 0x8B0000, 'DRAGON'],
+  4: ['ABISMO', 'PIEDRA ABISMAL', 1000, 'CRISTAL-SOMBRA', 8000, 'ALMA EN PENA', [5,10,550], [5,10,20], 'TROLL ABYSS', 880, [10,15,40], 4000, 0x1A0033, 'ALMA'],
+  5: ['???', null, 0, 'CORAZON-ABYSS', 30000, 'ALMA EN PENA', [8,10,63], [9,10,45], 'HEROE CORRUPTO', 2100, [15,20,80], 15000, 0x000000, 'BOSS']
 };
 
 // Zone array indices (optimized access)
@@ -57,38 +55,26 @@ const getMaxEvents = z => {
 // Projectile speed multiplier per zone (increases difficulty)
 const getProjSpeed = z => 1.0 + (z * 0.1); // Zone 0: 1.0x, Zone 1: 1.1x, Zone 2: 1.2x, Zone 3: 1.3x, Zone 4: 1.4x, Zone 5: 1.5x
 
-// MINERAL COLORS - simple color mapping for optimized drawing
-const MINERAL_COLORS = {
-  'HIERRO': 0x888888,
-  'ORO': 0xFFD700,
-  'PIEDRA INFERNAL': 0xFF4500,
-  'DIAMANTE': 0x87CEEB,
-  'PIEDRA ABISMAL': 0x4B0082
+// MINERAL DATA - [mainColor, gemColor]
+const MINERAL_DATA = {
+  'HIERRO': [0x888888, 0xC0C0C0],
+  'ORO': [0xFFD700, 0xFFFF00],
+  'PIEDRA INFERNAL': [0xFF4500, 0xFF6347],
+  'DIAMANTE': [0x87CEEB, 0xADD8E6],
+  'PIEDRA ABISMAL': [0x4B0082, 0x9370DB]
 };
 
 // Simple unified mineral drawing function
-function drawMineral(ox, oy, color, g = graphics) {
-  // Main rock shape (rectangle)
-  g.fillStyle(color, 1);
+function drawMineral(ox, oy, mineralName, g = graphics) {
+  const colors = MINERAL_DATA[mineralName] || MINERAL_DATA['HIERRO'];
+  const mainColor = colors[0];
+  const gemColor = colors[1];
+  
+  g.fillStyle(mainColor, 1);
   g.fillRect(ox - 35, oy - 42, 70, 84);
   
-  // Add some darker shading
   g.fillStyle(0x000000, 0.3);
   g.fillRect(ox - 35, oy + 20, 70, 22);
-  
-  // Add 2-3 mineral deposits with proper colors
-  let gemColor;
-  if (color === 0x87CEEB) { // DIAMANTE
-    gemColor = 0xADD8E6; // Light blue
-  } else if (color === 0xFF4500) { // PIEDRA INFERNAL
-    gemColor = 0xFF6347; // Bright red-orange
-  } else if (color === 0x4B0082) { // PIEDRA ABISMAL
-    gemColor = 0x9370DB; // Medium purple
-  } else if (color === 0xFFD700) { // ORO
-    gemColor = 0xFFFF00; // Bright yellow
-  } else { // HIERRO
-    gemColor = 0xC0C0C0; // Silver
-  }
   
   g.fillStyle(gemColor, 0.9);
   g.fillCircle(ox - 15, oy - 20, 8);
@@ -102,12 +88,10 @@ let zone = 0;
 let mineralsInZone = 0; // Track minerals spawned in current zone (max 3)
 let eventNum = 0;
 let currentEvent = null;
-// DMG SET TO 333 FOR TESTING every 333 config on normal should be 1
-let player = { hp: 1, maxHp: 1, dmg: 1, cooldown: 0.6, moveSpeed: 250, money: 0, treasures: 0, pos: 300, x: 150, combo: 0 }; // Y: 200-400, X: 50-350
+let player = { hp: 1, maxHp: 1, dmg: 1, cooldown: 0.6, moveSpeed: 250, money: 0, treasures: 0, pos: 300, x: 150, combo: 0, timingBonus: 0, miningBonus: 0 };
 let enemy = null;
 let ore = null;
 let chest = null;
-let escapeCount = 0;
 let attackTimer = 0;
 
 // Input state for smooth movement
@@ -122,9 +106,8 @@ const INPUT_DEBOUNCE_MS = 150; // Minimum time between inputs
 let canAttack = true;
 let graphics, scene, texts = {};
 let runMoney = 0;
-let upgradePrices = { hp: 50, dmg: 100, speed: 75, timing: 200 };
-let upgradeLevel = { hp: 0, dmg: 0, speed: 0, timing: 0 };
-const heartPrices = [50, 200, 500, 2000, 10000];
+let upgradePrices = { hp: 50, dmg: 80, speed: 60, timing: 150, mining: 120 };
+let upgradeLevel = { timing: 0 };
 let shakeAmt = 0;
 let particles = [];
 let projectiles = [];
@@ -133,8 +116,8 @@ let shopSelection = 0;
 let bgStars = [];
 let particleEmitters = [];
 let playerSprite = null;
-let directionChoice = null; // null, 'forward', 'back'
 let lastEventWasChest = false; // Track if last event was chest (don't increment counter)
+let lastEventType = null; // Track last event type to reduce repetition
 let directionArrows = []; // Array to hold arrow sprites
 let enemySprites = []; // Array to hold enemy sprite references
 let timingSlider = { position: 0, direction: 1, speed: 2 }; // Timing slider for pickaxe
@@ -152,7 +135,8 @@ function getZoneSpeedMultiplier(z) {
 function updateTimingZone(randomize = true) {
   const baseZone = 0.1; // 10% base zone
   const upgradeBonus = upgradeLevel.timing * 0.05; // 5% extra per upgrade level
-  const totalZone = baseZone + upgradeBonus;
+  const hawkEyeBonus = player.timingBonus; // Ojo de Halcón bonus
+  const totalZone = baseZone + upgradeBonus + hawkEyeBonus;
 
   // If zone is too large (>0.8), center it
   if (totalZone >= 0.8) {
@@ -505,37 +489,6 @@ function createBgStars() {
   }
 }
 
-function createExplosion(x, y, color, count = 20) {
-  // Create particle emitter for explosion
-  const emitter = scene.add.particles(x, y, null, {
-    speed: { min: 100, max: 300 },
-    angle: { min: 0, max: 360 },
-    scale: { start: 1, end: 0 },
-    alpha: { start: 1, end: 0 },
-    lifespan: 800,
-    gravityY: 200,
-    quantity: count,
-    blendMode: 'ADD',
-    emitting: false
-  });
-  
-  // Custom renderer for colored particles
-  emitter.addEmitZone({
-    type: 'random',
-    source: new Phaser.Geom.Circle(0, 0, 10)
-  });
-  
-  emitter.explode(count);
-  
-  particleEmitters.push(emitter);
-  
-  // Clean up after particles die
-  scene.time.delayedCall(1000, () => {
-    emitter.destroy();
-    const idx = particleEmitters.indexOf(emitter);
-    if (idx > -1) particleEmitters.splice(idx, 1);
-  });
-}
 
 // MAIN GAME LOOP
 function create() {
@@ -618,43 +571,16 @@ const darkRed = 0x8B0000;   // Cuerpo y Alas
 const crimson = 0xDC143C;   // Cabeza
 const gold = 0xFFD700;      // Ojo y Espinas/Detalles
 
-// -- Cabeza (Triángulo) --
-dragonGraphics.fillStyle(crimson);
-// Ajusta las coordenadas para que la punta del triángulo mire hacia arriba o hacia la derecha si prefieres
-// Aquí la punta mira hacia la derecha
-dragonGraphics.fillTriangle(14, 12, 20, 8, 20, 16); // Punta (x,y), Base inferior (x,y), Base superior (x,y)
-// (x,y) = (14,12) -> Izquierda (pico)
-// (x,y) = (20,8)  -> Arriba derecha
-// (x,y) = (20,16) -> Abajo derecha
-
-// -- Cuerpo (Cuadrado/Rectángulo) - Torso más delgado --
+  dragonGraphics.fillStyle(crimson);
+  dragonGraphics.fillTriangle(14, 12, 20, 8, 20, 16);
+  dragonGraphics.fillStyle(darkRed);
+  dragonGraphics.fillRect(20, 10, 12, 8);
 dragonGraphics.fillStyle(darkRed);
-dragonGraphics.fillRect(20, 10, 12, 8); // Más delgado verticalmente (altura reducida de 12 a 8)
-
-// -- Alas (Dos Triángulos Grandes Superpuestos con Offset) - Ajustadas al nuevo torso --
-dragonGraphics.fillStyle(darkRed);
-// Ala 1 (detrás, ajustada verticalmente)
-dragonGraphics.fillTriangle(20, 8, 30, 4, 30, 16); // Alineada con el torso más delgado
-// (x,y) = (20,8) -> Punto más cercano al cuerpo (subido)
-// (x,y) = (30,4) -> Punta superior del ala (subida)
-// (x,y) = (30,16) -> Punta inferior del ala (ajustada)
-
-// Ala 2 (delante, ligeramente desplazada)
-dragonGraphics.fillTriangle(22, 9, 32, 5, 32, 17); // Ajustada al nuevo centro vertical
-// (x,y) = (22,9) -> Punto más cercano al cuerpo (ajustado)
-// (x,y) = (32,5) -> Punta superior del ala (ajustada)
-// (x,y) = (32,17) -> Punta inferior del ala (ajustada)
-
-// -- Cola (Triángulo al final del torso) - Centrada con el nuevo torso --
-dragonGraphics.fillStyle(darkRed);
-dragonGraphics.fillTriangle(32, 14, 38, 11, 38, 17); // Centrada verticalmente
-// (x,y) = (32,14) -> Punto base en el cuerpo (centrado)
-// (x,y) = (38,11) -> Punta superior de la cola (ajustada)
-// (x,y) = (38,17) -> Punta inferior de la cola (ajustada)
-
-// -- Ojo (Pequeño cuadrado en la cabeza) --
+dragonGraphics.fillTriangle(20, 8, 30, 4, 30, 16);
+dragonGraphics.fillTriangle(22, 9, 32, 5, 32, 17);
+dragonGraphics.fillTriangle(32, 14, 38, 11, 38, 17);
 dragonGraphics.fillStyle(gold);
-dragonGraphics.fillRect(16, 11, 2, 2); // Pequeño cuadrado para el ojo
+dragonGraphics.fillRect(16, 11, 2, 2);
 
 dragonGraphics.generateTexture('dragon', 64, 32); // Ajustado a un tamaño más ancho para el dragón
 dragonGraphics.destroy();
@@ -684,16 +610,16 @@ dragonGraphics.destroy();
   texts.title = this.add.text(400, 130, 'PLATANUS ABYSS', {
     fontSize: '72px', 
     fontFamily: 'Impact, Arial Black, Arial', 
-    color: '#4b2457ff',
+    color: '#8b4789',
     stroke: '#000', 
     strokeThickness: 12,
     shadow: { offsetX: 4, offsetY: 4, color: '#330000', blur: 10, fill: true }
   }).setOrigin(0.5);
 
-  texts.subtitle = this.add.text(400, 230, 'PRESIONA START', {
+  texts.subtitle = this.add.text(400, 450, 'PRESIONA START', {
     fontSize: '32px', 
     fontFamily: 'Impact, Arial Black, Arial', 
-    color: '#993535ff',
+    color: '#d4af37',
     stroke: '#000', 
     strokeThickness: 6,
     shadow: { offsetX: 2, offsetY: 2, color: '#4b1818ff', blur: 6, fill: true }
@@ -702,38 +628,38 @@ dragonGraphics.destroy();
   texts.info = this.add.text(400, 520, 'DESCIENDE A LA OSCURIDAD • ENFRENTA TU DESTINO • RECLAMA TU FORTUNA', {
     fontSize: '18px', 
     fontFamily: 'Arial', 
-    color: '#492020ff',
+    color: '#9370db',
     stroke: '#000',
     strokeThickness: 3
   }).setOrigin(0.5);
 
   texts.zone = this.add.text(400, 30, '', {
-    fontSize: '28px', fontFamily: 'Arial', color: '#00ffff',
+    fontSize: '28px', fontFamily: 'Arial', color: '#9370db',
     stroke: '#000', strokeThickness: 4
   }).setOrigin(0.5).setVisible(false).setDepth(500);
   
   texts.hp = this.add.text(50, 80, '', {
-    fontSize: '24px', fontFamily: 'Arial', color: '#ff0000',
+    fontSize: '24px', fontFamily: 'Arial', color: '#ff4444',
     stroke: '#000', strokeThickness: 3
   }).setVisible(false).setDepth(500);
   
   texts.money = this.add.text(750, 80, '', {
-    fontSize: '24px', fontFamily: 'Arial', color: '#ffff00',
+    fontSize: '24px', fontFamily: 'Arial', color: '#ffd700',
     stroke: '#000', strokeThickness: 3
   }).setOrigin(1, 0).setVisible(false).setDepth(500);
   
   texts.treasures = this.add.text(750, 110, '', {
-    fontSize: '20px', fontFamily: 'Arial', color: '#00ffff',
+    fontSize: '20px', fontFamily: 'Arial', color: '#00ddff',
     stroke: '#000', strokeThickness: 3
   }).setOrigin(1, 0).setVisible(false).setDepth(500);
   
   texts.combo = this.add.text(400, 530, '', {
-    fontSize: '24px', fontFamily: 'Courier New', color: '#FFD700',
+    fontSize: '24px', fontFamily: 'Courier New', color: '#ffaa00',
     stroke: '#000', strokeThickness: 3
   }).setOrigin(0.5, 0).setVisible(false).setDepth(500);
   
   texts.event = this.add.text(750, 145, '', {
-    fontSize: '24px', fontFamily: 'Arial', color: '#ffffff',
+    fontSize: '24px', fontFamily: 'Arial', color: '#cccccc',
     stroke: '#000', strokeThickness: 3
   }).setOrigin(1, 0).setVisible(false).setDepth(500);
   
@@ -1151,7 +1077,8 @@ function update(time, delta) {
           const attackMinY = enemy.attacking === 'upper' ? 200 : 300;
           const attackMaxY = enemy.attacking === 'upper' ? 300 : 400;
 
-          if (player.pos >= attackMinY && player.pos <= attackMaxY) {
+          if (player.x >= 0 && player.x <= 400 &&
+              player.pos >= attackMinY && player.pos <= attackMaxY) {
             takeDmg();
             if (state === 'GAMEOVER') return; // Salir inmediatamente si murió
             play(150, 0.4);
@@ -1163,15 +1090,18 @@ function update(time, delta) {
           // GOLEM: Triple line cascade attack
           let hit = false;
           // Check first line
-          if (player.pos >= enemy.attackLineY && player.pos <= enemy.attackLineY + 50) {
+          if (player.x >= 0 && player.x <= 400 &&
+              player.pos >= enemy.attackLineY && player.pos <= enemy.attackLineY + 50) {
             hit = true;
           }
           // Check second line
-          if (enemy.attackLineY2 && player.pos >= enemy.attackLineY2 && player.pos <= enemy.attackLineY2 + 50) {
+          if (player.x >= 0 && player.x <= 400 && enemy.attackLineY2 &&
+              player.pos >= enemy.attackLineY2 && player.pos <= enemy.attackLineY2 + 50) {
             hit = true;
           }
           // Check third line
-          if (enemy.attackLineY3 && player.pos >= enemy.attackLineY3 && player.pos <= enemy.attackLineY3 + 50) {
+          if (player.x >= 0 && player.x <= 400 && enemy.attackLineY3 &&
+              player.pos >= enemy.attackLineY3 && player.pos <= enemy.attackLineY3 + 50) {
             hit = true;
           }
           if (hit) {
@@ -1346,15 +1276,12 @@ function drawOre() {
   const ox = 600;
   const oy = 300;
   const dmgPct = ore.hp / ore.maxHp;
-
-  const color = MINERAL_COLORS[ZONES[zone][Z.COMMON]] || 0x888888;
   const alpha = 0.3 + (dmgPct * 0.7);
 
   const tempGraphics = scene.add.graphics();
   tempGraphics.setAlpha(alpha);
 
-  // Draw the simplified mineral
-  drawMineral(ox, oy, color, tempGraphics);
+  drawMineral(ox, oy, ZONES[zone][Z.COMMON], tempGraphics);
 
   scene.time.delayedCall(100, () => tempGraphics.destroy());
 
@@ -1599,7 +1526,7 @@ function handleInput(event) {
       play(330, 0.05);
       updateShopText();
     } else if (key === 'P1D') {
-      shopSelection = Math.min(6, shopSelection + 1);
+      shopSelection = Math.min(7, shopSelection + 1);
       play(330, 0.05);
       updateShopText();
     } else if (key === 'P1A') {
@@ -1640,24 +1567,17 @@ function handleInput(event) {
           play(150, 0.2);
         }
       } else if (shopSelection === 2) {
-        // Buy HP - upgrade max HP (max 10) and heal that amount
-        if (player.money >= upgradePrices.hp && player.maxHp < 10) {
+        // Buy HP - upgrade max HP (no limit) and heal that amount
+        if (player.money >= upgradePrices.hp) {
           player.money -= upgradePrices.hp;
           const gain = 1; // Fixed +1 HP
           player.maxHp += gain;
           player.hp += gain; // Heal the amount gained
-          upgradeLevel.hp++;
-          // Dynamic pricing: cheaper progression, 10th heart costs ~1500
-          // Hearts: 1->2(50), 2->3(87), 3->4(138), 4->5(211), 5->6(322), 6->7(492), 7->8(750), 8->9(1137), 9->10(1718)
-          if (player.maxHp < 10) {
-            upgradePrices.hp = Math.floor(upgradePrices.hp * 1.51 + 12);
-          }
-          showBigText(`VIDA MAXIMA +${gain}! [${player.maxHp}/10]`, 400, 200, '#ff0000', 44, 2000);
+          // Price based on shop purchases only (not total HP)
+          upgradePrices.hp = Math.floor(upgradePrices.hp * 1.51 + 12);
+          showBigText(`VIDA MAXIMA +${gain}! [${player.maxHp} HP]`, 400, 200, '#ff0000', 44, 2000);
           play(880, 0.3);
           updateShopText();
-        } else if (player.maxHp >= 10) {
-          showBigText('¡YA TIENES MAXIMO HP!', 400, 200, '#ffaa00', 36, 2000);
-          play(150, 0.2);
         } else {
           play(150, 0.2);
         }
@@ -1665,10 +1585,9 @@ function handleInput(event) {
         // Buy DMG
         if (player.money >= upgradePrices.dmg) {
           player.money -= upgradePrices.dmg;
-          const gain = roll(3, 6); // Aumentado de 1-3 a 3-6
+          const gain = roll(4, 8); // Aumentado de 3-6 a 4-8
           player.dmg += gain;
-          upgradeLevel.dmg++;
-          upgradePrices.dmg = Math.floor(upgradePrices.dmg * 2.5);
+          upgradePrices.dmg = Math.floor(upgradePrices.dmg * 2.0);
           showBigText(`DANO +${gain}!`, 400, 200, '#ff8800', 44, 2000);
           play(1000, 0.3);
           updateShopText();
@@ -1679,10 +1598,9 @@ function handleInput(event) {
         // Buy SPEED (Movement + Attack Speed)
         if (player.money >= upgradePrices.speed) {
           player.money -= upgradePrices.speed;
-          player.moveSpeed = Math.floor(player.moveSpeed * 1.10); // +10% movement speed
-          player.cooldown = Math.max(0.1, player.cooldown - 0.1); // -0.1s cooldown (min 0.1s)
-          upgradeLevel.speed++;
-          upgradePrices.speed = Math.floor(upgradePrices.speed * 2.5);
+          player.moveSpeed = Math.floor(player.moveSpeed * 1.12); // +12% movement speed (aumentado de 10%)
+          player.cooldown = Math.max(0.1, player.cooldown - 0.12); // -0.12s cooldown (aumentado de 0.1s)
+          upgradePrices.speed = Math.floor(upgradePrices.speed * 2.0);
           showBigText('MAS VELOCIDAD!', 400, 200, '#00ffff', 44, 2000);
           play(1200, 0.3);
           updateShopText();
@@ -1694,7 +1612,7 @@ function handleInput(event) {
         if (player.money >= upgradePrices.timing) {
           player.money -= upgradePrices.timing;
           upgradeLevel.timing++;
-          upgradePrices.timing = Math.floor(upgradePrices.timing * 2.5);
+          upgradePrices.timing = Math.floor(upgradePrices.timing * 2.0);
           updateTimingZone(false); // Apply the timing upgrade without randomizing position
           showBigText('PRECISION MEJORADA!', 400, 200, '#ffff00', 44, 2000);
           play(1300, 0.3);
@@ -1703,6 +1621,18 @@ function handleInput(event) {
           play(150, 0.2);
         }
       } else if (shopSelection === 6) {
+        // Buy PICO SUERTUDO (Mining Bonus)
+        if (player.money >= upgradePrices.mining) {
+          player.money -= upgradePrices.mining;
+          player.miningBonus += 0.6; // +60% more minerals (aumentado de 50%)
+          upgradePrices.mining = Math.floor(upgradePrices.mining * 1.9);
+          showBigText('PICO SUERTUDO! +60% MINERALES!', 400, 200, '#00ffaa', 44, 2000);
+          play(1100, 0.4, 'triangle');
+          updateShopText();
+        } else {
+          play(150, 0.2);
+        }
+      } else if (shopSelection === 7) {
         // Return to mines - advance to next room (don't repeat cleared room)
         state = 'GAME';
         currentEvent = null;
@@ -1712,6 +1642,7 @@ function handleInput(event) {
         if (!lastEventWasChest) {
           eventNum++;
         }
+        lastEventWasChest = false; // Reset flag after using it
         
         // Check if zone is complete
         if (eventNum >= getMaxEvents(zone)) {
@@ -1719,6 +1650,7 @@ function handleInput(event) {
           runMoney += ZONES[zone][Z.CHEST] * 5;
           zone++;
           mineralsInZone = 0; // Reset mineral counter for new zone
+          lastEventType = null; // Reset event tracking for new zone
           const newPhase = Math.floor(zone / 3);
           eventNum = 0;
           
@@ -1869,62 +1801,26 @@ function mineOre() {
   spawnParticles(600, 300, ZONES[zone][Z.COLOR], 8);
   showBigText(`-${dmg} !`, 600, 200, '#ffaa00', 36);
 
-  // Always drop gold when mining (20% of zone common value per hit)
-  const miningReward = Math.floor(ZONES[zone][Z.COMMON_VAL] * 0.2);
+  // Always drop gold when mining (20% of zone common value per hit) + mining bonus
+  const baseMiningReward = Math.floor(ZONES[zone][Z.COMMON_VAL] * 0.2);
+  const miningReward = Math.floor(baseMiningReward * (1 + player.miningBonus));
   player.treasures += miningReward;
   runMoney += miningReward;
   showBigText(`Minando ${ZONES[zone][Z.COMMON]} +${miningReward}`, 600, 250, '#00ffff', 28);
-  play(800, 0.2, 'sine'); // Mining sound
-  spawnParticles(600, 300, 0x00ffff, 12); // Cyan particles for treasures
-  updateGameUI(); // Update display immediately
+  play(800, 0.2, 'sine');
+  spawnParticles(600, 300, 0x00ffff, 12);
+  updateGameUI();
   
   if (ore.hp <= 0) {
     ore.hp = 0;
-    // Roll for loot
-    let totalMoney = 0;
-    let commonCount = 0;
-    let rareCount = 0;
-    let foundRare = false;
-    const rolls = 3 - ore.hits;
+    // Recompensa final fija al romper el mineral (aplica mining bonus)
+    const baseValue = ZONES[zone][Z.COMMON_VAL] * 3;
+    const finalReward = Math.floor(baseValue * (1 + player.miningBonus));
     
-    for (let i = 0; i <= rolls; i++) {
-      const lootRoll = roll(1, 10);
-      if (lootRoll <= 4) {
-        // Mineral común
-        const commonVal = ZONES[zone][Z.COMMON_VAL];
-        player.treasures += commonVal;
-        runMoney += commonVal;
-        totalMoney += commonVal;
-        commonCount++;
-      } else if (lootRoll === 10) {
-        // Mineral raro
-        const rareVal = ZONES[zone][Z.RARE_VAL];
-        player.treasures += rareVal;
-        runMoney += rareVal;
-        totalMoney += rareVal;
-        rareCount++;
-        foundRare = true;
-        play(1200, 0.3, 'sine');
-      }
-      // 5-9 = Piedra (nada)
-    }
+    player.treasures += finalReward;
+    runMoney += finalReward;
     
-    // Mostrar recompensas
-    let yOffset = 280;
-    if (commonCount > 0) {
-      showBigText(`${ZONES[zone][Z.COMMON]} x${commonCount}`, 600, yOffset, '#cccccc', 32);
-      yOffset += 40;
-    }
-    if (rareCount > 0) {
-      showBigText(`${ZONES[zone][Z.RARE]} x${rareCount}!`, 600, yOffset, '#ff00ff', 48);
-      yOffset += 50;
-    }
-    if (totalMoney > 0) {
-      showBigText(`+💎${totalMoney}`, 600, yOffset, '#00ffff', 44);
-    } else {
-      showBigText('Piedra...', 600, 300, '#666666', 36);
-    }
-    
+    showBigText(`${ZONES[zone][Z.COMMON]} +💎${finalReward}`, 600, 280, '#00ffff', 44);
     play(440, 0.4);
     spawnParticles(600, 300, ZONES[zone][Z.COLOR], 40);
     shake(15);
@@ -2040,19 +1936,17 @@ function openChest() {
   // Abyss chests (zone 4+): Only heal or damage (no gold - no shop available)
   if (zone >= 4) {
     const rand = Math.random();
-    if (rand < 0.5) {
-      // 50% - Heal (Full restore) - OR +1 maxHP if already at full
+    if (rand < 0.4) {
+      // 40% - Heal (Full restore) - OR +1 maxHP if already at full
       if (player.hp === player.maxHp) {
         // Already at max HP - grant +1 maxHP!
         player.maxHp += 1;
         player.hp = player.maxHp;
         showBigText('🍌 PLATANO DIVINO! 🍌', 600, 280, '#ffff00', 48, 2800);
-        showBigText(`¡+1 VIDA MAXIMA! [${player.maxHp}/10]`, 600, 340, '#00ff00', 38, 2500);
+        showBigText(`¡+1 VIDA MAXIMA! [${player.maxHp} HP]`, 600, 340, '#00ff00', 38, 2500);
         play(1320, 0.5, 'sine');
-        spawnParticles(600, 300, 0xffff00, 50);
-        for (let i = 0; i < 20; i++) {
-          setTimeout(() => spawnParticles(600, 300, 0x00ff00, 5), i * 50);
-        }
+        spawnParticles(600, 300, 0xffff00, 60);
+        spawnParticles(600, 300, 0x00ff00, 25);
         shake(15);
       } else {
         // Not at max HP - normal heal
@@ -2061,43 +1955,46 @@ function openChest() {
         showBigText('🍌 PLATANO MAGICO! 🍌', 600, 280, '#ffff00', 48, 2800);
         showBigText(`VIDA TOTAL +${healAmount} HP!`, 600, 340, '#00ff00', 38, 2500);
         play(880, 0.4, 'sine');
-        spawnParticles(600, 300, 0xffff00, 30);
-        for (let i = 0; i < 15; i++) {
-          setTimeout(() => spawnParticles(600, 300, 0x00ff00, 3), i * 60);
-        }
+        spawnParticles(600, 300, 0xffff00, 40);
+        spawnParticles(600, 300, 0x00ff00, 15);
         shake(10);
       }
-    } else {
-      // 50% - +1 Damage
+    } else if (rand < 0.8) {
+      // 40% - +1 Damage
       player.dmg += 1;
       showBigText('⚔️ PICO MAS GRANDE +1 DMG! ⚔️', 600, 280, '#ff4400', 48);
       play(1200, 0.6, 'sawtooth');
-      for (let i = 0; i < 30; i++) {
-        setTimeout(() => spawnParticles(600, 300, 0xff4400, 5), i * 30);
-      }
+      spawnParticles(600, 300, 0xff4400, 40);
       shake(18);
+    } else {
+      // 20% - Ojo de Halcón (Timing Zone +10%)
+      player.timingBonus += 0.1;
+      updateTimingZone(false);
+      showBigText('🦅 OJO DE HALCON! 🦅', 600, 280, '#ffaa00', 48);
+      showBigText('ZONA VERDE +10% MAS GRANDE!', 600, 340, '#00ff00', 36);
+      play(1400, 0.5, 'sine');
+      spawnParticles(600, 300, 0xffaa00, 35);
+      shake(12);
     }
   } else {
     // Normal zones (0-3): Full loot table with treasures
     const rand = Math.random();
-    if (rand < 0.12) {
-      // 12% - Empty
+    if (rand < 0.05) {
+      // 5% - Empty (reduced from 12%)
       showBigText('COFRE VACIO!', 600, 300, '#666666', 40);
       play(200, 0.3);
       spawnParticles(600, 300, 0x666666, 8);
-    } else if (rand < 0.27) {
+    } else if (rand < 0.20) {
       // 15% - Banana (heals 50% HP) - OR +1 maxHP if already at full
       if (player.hp === player.maxHp) {
         // Already at max HP - grant +1 maxHP!
         player.maxHp += 1;
         player.hp = player.maxHp;
         showBigText('🍌 PLATANO DIVINO! 🍌', 600, 280, '#ffff00', 48, 2800);
-        showBigText(`¡+1 VIDA MAXIMA! [${player.maxHp}/10]`, 600, 340, '#00ff00', 38, 2500);
+        showBigText(`¡+1 VIDA MAXIMA! [${player.maxHp} HP]`, 600, 340, '#00ff00', 38, 2500);
         play(1320, 0.5, 'sine');
-        spawnParticles(600, 300, 0xffff00, 50);
-        for (let i = 0; i < 20; i++) {
-          setTimeout(() => spawnParticles(600, 300, 0x00ff00, 5), i * 50);
-        }
+        spawnParticles(600, 300, 0xffff00, 60);
+        spawnParticles(600, 300, 0x00ff00, 25);
         shake(15);
       } else {
         // Not at max HP - normal heal
@@ -2107,52 +2004,43 @@ function openChest() {
         showBigText('🍌 PLATANO ENCONTRADO! 🍌', 600, 280, '#ffff00', 48, 2800);
         showBigText(`VIDA RESTAURADA +${actualHeal} HP!`, 600, 340, '#00ff00', 38, 2500);
         play(880, 0.4, 'sine');
-        spawnParticles(600, 300, 0xffff00, 30);
-        for (let i = 0; i < 15; i++) {
-          setTimeout(() => spawnParticles(600, 300, 0x00ff00, 3), i * 60);
-        }
+        spawnParticles(600, 300, 0xffff00, 40);
+        spawnParticles(600, 300, 0x00ff00, 15);
         shake(10);
       }
-    } else if (rand < 0.42) {
-      // 15% - Rare Loot
-      const money = ZONES[zone][Z.RARE_VAL];
-      player.treasures += money;
-      runMoney += money;
-      showBigText(`+💎${money} ARTEFACTOS RUNICOS!`, 600, 340, '#ff66ff', 38);
-      play(1000, 0.5, 'sawtooth');
-      spawnParticles(600, 300, 0xff00ff, 40);
-      for (let i = 0; i < 15; i++) {
-        setTimeout(() => spawnParticles(600, 300, 0xffffff, 2), i * 100);
-      }
-      shake(12);
-    } else if (rand < 0.54) {
-      // 12% - +1 Damage
+    } else if (rand < 0.35) {
+      // 15% - +1 Damage (increased from 10%)
       player.dmg += 1;
       showBigText('⚔️ PICO MAS GRANDE +1 DMG! ⚔️', 600, 280, '#ff4400', 48);
       play(1200, 0.6, 'sawtooth');
-      for (let i = 0; i < 30; i++) {
-        setTimeout(() => spawnParticles(600, 300, 0xff4400, 5), i * 30);
-      }
+      spawnParticles(600, 300, 0xff4400, 40);
       shake(18);
-    } else if (rand < 0.77) {
-      // 23% - Normal treasure
+    } else if (rand < 0.50) {
+      // 15% - Ojo de Halcón (Timing Zone +10%) - increased from 10%
+      player.timingBonus += 0.1;
+      updateTimingZone(false);
+      showBigText('🦅 OJO DE HALCON! 🦅', 600, 280, '#ffaa00', 48);
+      showBigText('ZONA VERDE +10% MAS GRANDE!', 600, 340, '#00ff00', 36);
+      play(1400, 0.5, 'sine');
+      spawnParticles(600, 300, 0xffaa00, 35);
+      shake(12);
+    } else if (zone === 0 && rand < 0.60) {
+      // 10% - Pico Bendito (ONLY in BOSQUE - zone 0) - reduced from 15%
+      player.miningBonus += 1.0;
+      showBigText('⛏️ PICO BENDITO! ⛏️', 600, 280, '#00ffff', 48);
+      showBigText('MINERALES DAN X2 RECURSOS!', 600, 340, '#ffff00', 36);
+      play(1100, 0.5, 'triangle');
+      spawnParticles(600, 300, 0x00ffff, 35);
+      shake(15);
+    } else {
+      // 50% (zones 1-3) OR 40% (zone 0) - Treasure (consolidated from rare+normal+small)
       const money = ZONES[zone][Z.CHEST];
       player.treasures += money;
       runMoney += money;
-      showBigText(`+💎${money} GEMAS Y JOYAS!`, 600, 340, '#ffff88', 36);
+      showBigText(`+💎${money} TESORO!`, 600, 340, '#ffff88', 36);
       play(800, 0.4, 'sine');
-      spawnParticles(600, 300, 0xffff00, 25);
-      for (let i = 0; i < 12; i++) {
-        setTimeout(() => spawnParticles(600, 300, 0xffdd00, 3), i * 80);
-      }
-    } else {
-      // 23% - Small treasure
-      const money = Math.floor(ZONES[zone][Z.CHEST] * 0.4);
-      player.treasures += money;
-      runMoney += money;
-      showBigText(`+💎${money} ROPA VIEJA!`, 600, 340, '#aaaaaa', 32);
-      play(600, 0.3);
-      spawnParticles(600, 300, 0xcccccc, 15);
+      spawnParticles(600, 300, 0xffff00, 35);
+      spawnParticles(600, 300, 0xffdd00, 15);
     }
   }
   
@@ -2222,7 +2110,6 @@ function completeEvent() {
   timingSlider.direction = 1;
   
   texts.event.setVisible(false);
-  escapeCount = 0;
   
   // Show direction choice arrows instead of auto-advancing
   showDirectionChoice(wasChest);
@@ -2266,7 +2153,6 @@ function showPickaxeSwing(x, y) {
 }
 
 function showDirectionChoice(wasChest = false) {
-  directionChoice = null;
   lastEventWasChest = wasChest;
 
   // Clear any existing arrows and block texts
@@ -2390,8 +2276,6 @@ function showDirectionChoice(wasChest = false) {
 }
 
 function selectDirection(choice) {
-  directionChoice = choice;
-
   // Hide arrows and hint
   directionArrows.forEach(arrow => arrow.destroy());
   directionArrows = [];
@@ -2407,6 +2291,7 @@ function selectDirection(choice) {
     runMoney += ZONES[zone][Z.CHEST] * 5;
     zone++;
     mineralsInZone = 0; // Reset mineral counter for new zone
+    lastEventType = null; // Reset event tracking for new zone
     const newPhase = Math.floor(zone / 3);
     eventNum = 0;
     
@@ -2432,7 +2317,7 @@ function nextEvent() {
   // Randomize timing zone position for new event
   updateTimingZone();
   
-  // Zona 8 (JEFE FINAL): Solo el jefe, un evento
+  // Zona 5 (JEFE FINAL): Solo el jefe, un evento
   if (zone === 5) {
     spawnEnemy(); // Solo el HEROE CORRUPTO
     updateGameUI();
@@ -2441,26 +2326,38 @@ function nextEvent() {
   
   // Zona 4 (EL ABISMO): Solo enemigos y cofres, sin minerales (3 eventos)
   if (zone === 4) {
-    const roll = Math.random();
-    if (roll < 0.70) { // 70% enemigos
+    const eventRoll = Math.random();
+    if (eventRoll < 0.70) { // 70% enemigos
       spawnEnemy();
     } else {
-      spawnChest(); // 30% cofres (¡AUMENTADO!)
+      spawnChest(); // 30% cofres
     }
     updateGameUI();
     return;
   }
   
   // Zonas normales (0-3): Minerales, enemigos y cofres
-  const eventRoll = roll(1, 15); // Cambiar de 1-10 a 1-15 para ajustar probabilidades
-  if (eventRoll <= 3) {
-    spawnEnemy(); // 3/15 = 20%
-  } else if (eventRoll <= 6) {
-    spawnChest(); // 3/15 = 20% (¡AUMENTADO!)
+  let eventRoll = roll(1, 20); // 1-20 para probabilidades más finas
+  
+  // BOSQUE evento 2: Boost chest chance to 80%
+  if (zone === 0 && eventNum === 1 && eventRoll > 5) {
+    eventRoll = roll(5, 9); // Force chest range
+  }
+  
+  // Anti-repetición: -30% chance si es mismo tipo que anterior
+  const lastType = lastEventType;
+  if (lastType === 'ENEMY' && eventRoll <= 4) eventRoll = 5; // Evita enemigo
+  if (lastType === 'CHEST' && eventRoll >= 5 && eventRoll <= 9) eventRoll = 10; // Evita cofre
+  if (lastType === 'ORE' && eventRoll >= 10) eventRoll = roll(1, 9); // Evita mineral
+  
+  if (eventRoll <= 4) {
+    spawnEnemy(); // 4/20 = 20%
+  } else if (eventRoll <= 9) {
+    spawnChest(); // 5/20 = 25% (+5%)
   } else {
     // Max 3 minerals per zone
     if (mineralsInZone < 3) {
-      spawnOre(); // 10/15 ≈ 66.7%
+      spawnOre(); // 11/20 = 55%
       mineralsInZone++;
     } else {
       spawnEnemy(); // Spawn enemy instead if mineral limit reached
@@ -2472,6 +2369,7 @@ function nextEvent() {
 
 function spawnOre() {
   currentEvent = 'ORE';
+  lastEventType = 'ORE';
   ore = { hp: 30, maxHp: 30, hits: 0, scale: 0 };
   play(330, 0.2);
 
@@ -2492,6 +2390,7 @@ function spawnOre() {
 
 function spawnEnemy() {
   currentEvent = 'ENEMY';
+  lastEventType = 'ENEMY';
   
   // Zona ??? (5) solo tiene enemigos grandes
   if (zone === 5 || Math.random() >= 0.65) {
@@ -2532,6 +2431,7 @@ function spawnEnemy() {
 
 function spawnChest() {
   currentEvent = 'CHEST';
+  lastEventType = 'CHEST';
   chest = { opened: false };
   play(550, 0.2);
 
@@ -2546,7 +2446,7 @@ function startGame() {
   eventNum = 0;
   runMoney = 0;
   currentEvent = null;
-  escapeCount = 0;
+  lastEventType = null;
   
   hideMenu();
   showGameUI();
@@ -2590,7 +2490,7 @@ function resetGame() {
   // Complete deep reset - reinitialize ALL game state
 
   // Player and stats
-  player = { hp: 1, maxHp: 1, dmg: 1, cooldown: 0.6, moveSpeed: 250, money: 0, treasures: 0, pos: 300, x: 150, combo: 0 }; // Reset to center position
+  player = { hp: 1, maxHp: 1, dmg: 1, cooldown: 0.6, moveSpeed: 250, money: 0, treasures: 0, pos: 300, x: 150, combo: 0, timingBonus: 0, miningBonus: 0 }; // Reset to center position
 
   // Reset input state
   inputUp = false;
@@ -2606,19 +2506,19 @@ function resetGame() {
   eventNum = 0;
   currentEvent = null;
   lastEventWasChest = false;
+  lastEventType = null;
 
   // Combat state
   enemy = null;
   ore = null;
   chest = null;
-  escapeCount = 0;
   attackTimer = 0;
   canAttack = true;
 
   // Money and upgrades
   runMoney = 0;
-  upgradePrices = { hp: 50, dmg: 100, speed: 75, timing: 200 };
-  upgradeLevel = { hp: 0, dmg: 0, speed: 0, timing: 0 };
+  upgradePrices = { hp: 50, dmg: 100, speed: 75, timing: 200, mining: 150 };
+  upgradeLevel = { timing: 0 };
   updateTimingZone(); // Reset timing zone to base values
   shopSelection = 0;
 
@@ -2630,7 +2530,6 @@ function resetGame() {
   projectiles = [];
   bgStars = [];
   particleEmitters = [];
-  directionChoice = null;
   directionArrows = [];
   timingSlider = { position: 0, direction: 1, speed: 2 };
 
@@ -2708,11 +2607,12 @@ function hideMenu() {
 
 function showMenu() {
   // Restaurar textos originales del menú
-  texts.title.setText('EL ABYSS').setColor('#ff4400');
-  texts.subtitle.setText('PRESIONA START').setColor('#ffaa00');
+  texts.title.setText('EL ABYSS').setColor('#8b4789');
+  texts.title.setFontSize('72px');
+  texts.subtitle.setText('PRESIONA START').setColor('#d4af37');
   texts.subtitle.setAlign('center');
   texts.subtitle.setWordWrapWidth(0); // Desactivar word wrap
-  texts.info.setText('DESCIENDE A LA OSCURIDAD • ENFRENTA TU DESTINO • RECLAMA TU FORTUNA').setColor('#806060ff');
+  texts.info.setText('DESCIENDE A LA OSCURIDAD • ENFRENTA TU DESTINO • RECLAMA TU FORTUNA').setColor('#9370db');
 
   texts.combo.setVisible(false);     // <-- Faltaba este
   texts.title.setVisible(true);
@@ -2842,47 +2742,48 @@ function updateShopText() {
   const options = [
     { name: '💎 Vender Tesoros', price: -1, info: `Convierte tus tesoros en monedas (${player.treasures} tesoros disponibles)`, color: '#00ffff', cat: '💰' },
     { name: '🍌 Estofado de Potasio', price: 25, info: 'Rellena tus corazones', color: '#ffdd44', cat: '🍽️' },
-    { name: '❤️ Entrenamiento Fisico', price: upgradePrices.hp, info: `FULL TANK +1 Corazon [${player.hp}/${player.maxHp}]`, color: '#ff5555', cat: '💪' },
+    { name: '❤️ Entrenamiento Fisico', price: upgradePrices.hp, info: `FULL TANK +1 Corazon [${player.hp}/${player.maxHp} HP]`, color: '#ff5555', cat: '💪' },
     { name: '⚔️ Afilar Herramientas', price: upgradePrices.dmg, info: `Pico mas letal (+DMG)(+3d6) [${(1 + player.dmg)}-${(10 + player.dmg * 2)}]`, color: '#ff8833', cat: '🔨' },
     { name: '⚡ Cerveza Energizante', price: upgradePrices.speed, info: `Movimiento y ataque mas rapidos [${player.cooldown.toFixed(1)}s]`, color: '#44ddff', cat: '🍺' },
     { name: '🎯 Leccion de Precision', price: upgradePrices.timing, info: `Mejora tu punteria (ZONA VERDE MAS GRANDE) (Nivel ${upgradeLevel.timing})`, color: '#ffdd44', cat: '📜' },
-    { name: '⛏️ Volver a las Minas', price: 0, info: 'Regresar al abismo oscuro...', color: '#88ff88', cat: '🚪' }
+    { name: '⛏️ Pico Suertudo', price: upgradePrices.mining, info: `Minerales dan +50% mas recursos permanente [+${Math.floor(player.miningBonus * 100)}%]`, color: '#00ffaa', cat: '💎' },
+    { name: '🚪 Volver a las Minas', price: 0, info: 'Regresar al abismo oscuro...', color: '#88ff88', cat: '�' }
   ];
   
-  let y = 118;
+  let y = 100;
   options.forEach((opt, idx) => {
     const selected = idx === shopSelection;
     const canAfford = player.money >= opt.price || opt.price <= 0;
     
     const cardBg = scene.add.graphics();
-    // Parchment-style card
+    // Parchment-style card (reduced height: 60 -> 52)
     if (selected) {
       cardBg.fillStyle(canAfford ? 0x3a2f1f : 0x2f1a1a, 0.95);
-      cardBg.fillRect(80, y, 640, 60);
+      cardBg.fillRect(80, y, 640, 52);
       cardBg.lineStyle(3, canAfford ? 0xffd700 : 0xff4444, 1);
-      cardBg.strokeRect(80, y, 640, 60);
+      cardBg.strokeRect(80, y, 640, 52);
       // Inner glow
       cardBg.lineStyle(1, canAfford ? 0xffee99 : 0xff8888, 0.6);
-      cardBg.strokeRect(83, y + 3, 634, 54);
+      cardBg.strokeRect(83, y + 3, 634, 46);
     } else {
       cardBg.fillStyle(0x2a1f12, 0.7);
-      cardBg.fillRect(80, y, 640, 60);
+      cardBg.fillRect(80, y, 640, 52);
       cardBg.lineStyle(1, 0x4a3a2a, 0.6);
-      cardBg.strokeRect(80, y, 640, 60);
+      cardBg.strokeRect(80, y, 640, 52);
     }
     cardBg.setDepth(410);
     texts.shop.push(cardBg);
     
     // Category icon
-    const catText = scene.add.text(95, y + 10, opt.cat, {
-      fontSize: '26px',
+    const catText = scene.add.text(95, y + 8, opt.cat, {
+      fontSize: '24px',
       fontFamily: 'Arial'
     }).setDepth(420);
     texts.shop.push(catText);
     
     // Item name with tavern style
-    const nameText = scene.add.text(135, y + 6, opt.name, {
-      fontSize: selected ? '22px' : '20px',
+    const nameText = scene.add.text(135, y + 4, opt.name, {
+      fontSize: selected ? '20px' : '18px',
       fontFamily: 'Georgia, serif',
       color: selected ? (canAfford ? opt.color : '#665555') : '#998877',
       stroke: '#0a0502',
@@ -2892,8 +2793,8 @@ function updateShopText() {
     texts.shop.push(nameText);
     
     // Description
-    const descText = scene.add.text(135, y + 34, opt.info, {
-      fontSize: '13px',
+    const descText = scene.add.text(135, y + 29, opt.info, {
+      fontSize: '12px',
       fontFamily: 'Georgia, serif',
       color: selected ? (canAfford ? '#ccbb99' : '#ff7777') : '#776655',
       fontStyle: 'italic'
@@ -2902,7 +2803,7 @@ function updateShopText() {
     
     // Price tag with tavern coin style
     if (opt.price > 0) {
-      const priceText = scene.add.text(700, y + 30, `${opt.price}`, {
+      const priceText = scene.add.text(700, y + 26, `${opt.price}`, {
         fontSize: selected ? '26px' : '22px',
         fontFamily: 'Georgia, serif',
         color: canAfford ? '#ffd700' : '#ff5555',
@@ -2912,13 +2813,13 @@ function updateShopText() {
       }).setOrigin(1, 0.5).setDepth(420);
       texts.shop.push(priceText);
       
-      const coinIcon = scene.add.text(705, y + 30, '◉', {
-        fontSize: selected ? '20px' : '17px',
+      const coinIcon = scene.add.text(705, y + 26, '◉', {
+        fontSize: selected ? '18px' : '16px',
         color: canAfford ? '#ffee99' : '#aa4444'
       }).setOrigin(0, 0.5).setDepth(420);
       texts.shop.push(coinIcon);
     } else if (opt.price === -1) {
-      const freeText = scene.add.text(700, y + 30, player.treasures > 0 ? 'Vender!' : 'Sin tesoros', {
+      const freeText = scene.add.text(700, y + 26, player.treasures > 0 ? 'Vender!' : 'Sin tesoros', {
         fontSize: '18px',
         fontFamily: 'Georgia, serif',
         color: player.treasures > 0 ? '#00ffff' : '#666666',
@@ -2939,7 +2840,7 @@ function updateShopText() {
       texts.shop.push(freeText);
     }
     
-    y += 62;
+    y += 56; // Reduced spacing (62 -> 56) to fit 7 options
   });
 }
 
@@ -2954,6 +2855,12 @@ function showGameOver() {
   particles.forEach(p => p.destroy());
   particles = [];
   
+  // Limpiar y ocultar sprites de enemigos
+  enemySprites.forEach(sprite => {
+    if (sprite && sprite.destroy) sprite.destroy();
+  });
+  enemySprites = [];
+  
   // Limpiar enemigos y sus ataques
   if (enemy) {
     enemy.hp = 0;
@@ -2965,16 +2872,17 @@ function showGameOver() {
   chest = null;
   
   hideGame();
-
-  texts.title.setText('Otro Deshecho en el ABYSS').setVisible(true).setPosition(400, 200);
-  texts.title.setColor('#880000');
+//el texto es muy grande asi que hay que subirlo mas de lo que parece
+  texts.title.setText('Otro Deshecho en el ABYSS').setVisible(true).setPosition(400, 70);
+  texts.title.setFontSize('48px');
+  texts.title.setColor('#cc3333');
   
   texts.subtitle.setText(
-    `Profundidad Alcanzada: ${ZONES[zone][0]}\n` +
-    `Score Total: $${runMoney}\n` +
-    `Oro Final: $${player.money}\n\n` +
+    `Profundidad Alcanzada: ${ZONES[zone][0]}\n\n` +
+    `Score Total: $${runMoney}\n\n` +
+    `Oro Final: $${player.money}\n\n\n` +
     `PRESIONA START PARA DESCENDER DE NUEVO`
-  ).setVisible(true).setPosition(400, 320);
+  ).setVisible(true).setPosition(400, 340).setColor('#ff6666');
   
   texts.info.setVisible(false);
   
@@ -2984,31 +2892,25 @@ function showGameOver() {
 function showVictory() {
   hideGame();
   
-  texts.title.setText('ABYSS CONQUISTADO!').setVisible(true).setPosition(400, 200);
-  texts.title.setColor('#ffaa00');
+  // Limpiar y ocultar sprites de enemigos
+  enemySprites.forEach(sprite => {
+    if (sprite && sprite.destroy) sprite.destroy();
+  });
+  enemySprites = [];
+  
+  texts.title.setText('ABYSS CONQUISTADO!').setVisible(true).setPosition(400, 65);
+  texts.title.setFontSize('56px');
+  texts.title.setColor('#ffd700');
   
   // Use the last valid zone (5) if zone exceeds the array
   const finalZone = Math.min(zone, 5);
   
   texts.subtitle.setText(
-    `Profundidad Alcanzada: ${ZONES[finalZone][0]}\n` +
-    `Score Total: $${runMoney}\n` +
-    `Oro Final: $${player.money}\n\n\n\n` + // <-- Prueba con 4 \n (o 3)
+    `Profundidad Alcanzada: ${ZONES[finalZone][0]}\n\n` +
+    `Score Total: $${runMoney}\n\n` +
+    `Oro Final: $${player.money}\n\n\n` +
     `PRESIONA START PARA DESCENDER DE NUEVO`
-  ).setVisible(true).setPosition(400, 320);
-
-  // --- ⬇️ AQUÍ ESTÁ EL ARREGLO ⬇️ ---
-
-  // 1. Define un ancho máximo. Tu juego es de 800px,
-  //    así que 600px o 700px debería funcionar bien.
-  texts.subtitle.setWordWrapWidth(600); 
-
-  // 2. Asegúrate de que las líneas "partidas" también se centren.
-  texts.subtitle.setAlign('center'); 
-
-  // --- ⬆️ FIN DEL ARREGLO ⬆️ ---
-
-  texts.subtitle.setVisible(true).setPosition(400, 320);
+  ).setVisible(true).setPosition(400, 280).setColor('#ffed4e');
   
   texts.info.setVisible(false);
   
