@@ -58,27 +58,24 @@ class MenuScene extends Phaser.Scene {
   }
 
   create() {
-    // Background gradient effect
+    // Enhanced animated background with multiple layers
     const bgGraphics = this.add.graphics()
-    bgGraphics.fillGradientStyle(0x1a1a2e, 0x16213e, 0x0f3460, 0x1a1a2e, 1)
+    bgGraphics.fillGradientStyle(0x0f0f23, 0x1a1a2e, 0x16213e, 0x0f0f23, 1)
     bgGraphics.fillRect(0, 0, 800, 600)
 
-    // Animated background bubbles
-    for (let i = 0; i < 20; i++) {
-      const bubble = this.add.graphics()
-      const colors = [0x4ecdc4, 0x45b7d1, 0x96ceb4, 0xfeca57, 0xff9ff3, 0x54a0ff]
-      const color = Phaser.Utils.Array.GetRandom(colors)
-      bubble.fillStyle(color, 0.3)
-      const size = Phaser.Math.Between(20, 60)
-      bubble.fillCircle(Phaser.Math.Between(0, 800), Phaser.Math.Between(0, 600), size)
-      bubble.setDepth(-1)
+    // Animated starfield background
+    for (let i = 0; i < 100; i++) {
+      const star = this.add.graphics()
+      star.fillStyle(0xffffff, Phaser.Math.FloatBetween(0.2, 0.8))
+      const size = Phaser.Math.Between(1, 4)
+      star.fillCircle(Phaser.Math.Between(0, 800), Phaser.Math.Between(0, 600), size)
+      star.setDepth(-3)
 
-      // Subtle floating animation
+      // Twinkling effect
       this.tweens.add({
-        targets: bubble,
-        y: bubble.y - 50,
-        alpha: 0,
-        duration: Phaser.Math.Between(3000, 8000),
+        targets: star,
+        alpha: Phaser.Math.FloatBetween(0.2, 1),
+        duration: Phaser.Math.Between(2000, 5000),
         ease: 'Sine.easeInOut',
         yoyo: true,
         repeat: -1,
@@ -86,26 +83,100 @@ class MenuScene extends Phaser.Scene {
       })
     }
 
-    // Title with glow effect
-    const title = this.add.text(400, 150, "BUBBLE SHOOTER", {
-      fontSize: "72px",
+    // Large floating bubbles in background
+    for (let i = 0; i < 15; i++) {
+      const bubble = this.add.graphics()
+      const colors = [0x4ecdc4, 0x45b7d1, 0x96ceb4, 0xfeca57, 0xff9ff3, 0x54a0ff, 0x74b9ff, 0xa29bfe]
+      const color = Phaser.Utils.Array.GetRandom(colors)
+      bubble.fillStyle(color, 0.1)
+      const size = Phaser.Math.Between(80, 150)
+      bubble.fillCircle(Phaser.Math.Between(0, 800), Phaser.Math.Between(0, 600), size)
+      bubble.setDepth(-2)
+
+      // Complex floating animation
+      this.tweens.add({
+        targets: bubble,
+        x: bubble.x + Phaser.Math.Between(-100, 100),
+        y: bubble.y - Phaser.Math.Between(30, 80),
+        scaleX: Phaser.Math.FloatBetween(0.8, 1.2),
+        scaleY: Phaser.Math.FloatBetween(0.8, 1.2),
+        alpha: Phaser.Math.FloatBetween(0.05, 0.15),
+        duration: Phaser.Math.Between(8000, 15000),
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+        delay: Phaser.Math.Between(0, 5000)
+      })
+    }
+
+    // Medium animated bubbles
+    for (let i = 0; i < 25; i++) {
+      const bubble = this.add.graphics()
+      const colors = [0x4ecdc4, 0x45b7d1, 0x96ceb4, 0xfeca57, 0xff9ff3, 0x54a0ff]
+      const color = Phaser.Utils.Array.GetRandom(colors)
+      bubble.fillStyle(color, 0.2)
+      const size = Phaser.Math.Between(30, 70)
+      bubble.fillCircle(Phaser.Math.Between(0, 800), Phaser.Math.Between(0, 600), size)
+      bubble.setDepth(-1)
+
+      // Enhanced floating animation with rotation
+      this.tweens.add({
+        targets: bubble,
+        x: bubble.x + Phaser.Math.Between(-50, 50),
+        y: bubble.y - Phaser.Math.Between(20, 60),
+        rotation: Phaser.Math.FloatBetween(-0.5, 0.5),
+        alpha: Phaser.Math.FloatBetween(0.1, 0.3),
+        duration: Phaser.Math.Between(4000, 10000),
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+        delay: Phaser.Math.Between(0, 3000)
+      })
+    }
+
+    // Enhanced title with multiple effects
+    const title = this.add.text(400, 150, "BUBBLE POP", {
+      fontSize: "80px",
       fill: "#4ecdc4",
       fontFamily: "Arial",
       fontStyle: "bold",
       stroke: "#ffffff",
-      strokeThickness: 6,
+      strokeThickness: 8,
     })
     title.setOrigin(0.5)
 
-    // Add glow effect to title
+    // Add multiple glow effects to title
     this.tweens.add({
       targets: title,
-      scaleX: 1.05,
-      scaleY: 1.05,
-      duration: 2000,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 2500,
       ease: 'Sine.easeInOut',
       yoyo: true,
       repeat: -1
+    })
+
+    // Pulsing glow effect
+    this.tweens.add({
+      targets: title,
+      alpha: 0.9,
+      duration: 1500,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+      delay: 500
+    })
+
+    // Color cycling effect
+    const colors = ['#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff']
+    let colorIndex = 0
+    this.time.addEvent({
+      delay: 800,
+      callback: () => {
+        colorIndex = (colorIndex + 1) % colors.length
+        title.setStyle({ fill: colors[colorIndex] })
+      },
+      loop: true
     })
 
     // Creator name
@@ -119,74 +190,114 @@ class MenuScene extends Phaser.Scene {
     })
     title2.setOrigin(0.5)
 
-    // Subtitle with animation
-    const subtitle = this.add.text(400, 230, "Platanus Hack 25 Arcade", {
-      fontSize: "28px",
+    // Enhanced subtitle with multiple effects
+    const subtitle = this.add.text(400, 240, "¡Explota burbujas del mismo color!", {
+      fontSize: "32px",
       fill: "#ffe66d",
       fontFamily: "Arial",
-      fontStyle: "italic",
+      fontStyle: "bold",
     })
     subtitle.setOrigin(0.5)
 
-    // Pulsing effect for subtitle
+    // Enhanced pulsing and scaling effects
     this.tweens.add({
       targets: subtitle,
-      alpha: 0.7,
-      duration: 1500,
+      alpha: 0.8,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 2000,
       ease: 'Sine.easeInOut',
       yoyo: true,
       repeat: -1
     })
 
-    // Instructions with better styling
+    // Secondary subtitle
+    const subtitle2 = this.add.text(400, 280, "Platanus Hack 25 Arcade Challenge", {
+      fontSize: "20px",
+      fill: "#96ceb4",
+      fontFamily: "Arial",
+      fontStyle: "italic",
+    })
+    subtitle2.setOrigin(0.5)
+
+    // Subtle fade effect for secondary subtitle
+    this.tweens.add({
+      targets: subtitle2,
+      alpha: 0.6,
+      duration: 3000,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+      delay: 1000
+    })
+
+    // Enhanced instructions panel with better visual hierarchy
     const instructionsBg = this.add.graphics()
-    instructionsBg.fillStyle(0x000000, 0.7)
-    instructionsBg.fillRoundedRect(200, 270, 400, 120, 10)
+    instructionsBg.fillStyle(0x000000, 0.8)
+    instructionsBg.fillRoundedRect(150, 320, 500, 140, 15)
+    instructionsBg.lineStyle(3, 0x4ecdc4, 1)
+    instructionsBg.strokeRoundedRect(150, 320, 500, 140, 15)
 
     const instructions = this.add.text(
       400,
-      290,
-      "🎯 Conecta 3+ burbujas del mismo color\n\n⚠️ Después de 1 minuto las burbujas caen automáticamente",
+      340,
+      "🎯 OBJETIVO: Conecta 3+ burbujas del mismo color\n\n⚠️ ¡CUIDADO! Después de 1 minuto las burbujas caen automáticamente\n\n💎 ¡Elimina todas las burbujas para ganar!",
       {
         fontSize: "16px",
         fill: "#ffffff",
         fontFamily: "Arial",
         fontStyle: "bold",
         align: "center",
+        lineSpacing: 8,
       },
     )
     instructions.setOrigin(0.5)
 
+    // Enhanced controls panel
+    const controlsBg = this.add.graphics()
+    controlsBg.fillStyle(0x000000, 0.8)
+    controlsBg.fillRoundedRect(150, 470, 500, 100, 15)
+    controlsBg.lineStyle(3, 0xff9ff3, 1)
+    controlsBg.strokeRoundedRect(150, 470, 500, 100, 15)
+
     const controls = this.add.text(
       400,
-      340,
-      "🎮 CONTROLES FÁCILES:\n\n" +
-      "🎯 Jugador 1:\n" +
-      "  📍 Mover cañón: A | D\n" +
-      "  🎯 Apuntar: Q W E S\n" +
-      "  💥 Disparar: ESPACIO\n\n" +
-      "🎯 Jugador 2:\n" +
-      "  📍 Mover cañón: J | L\n" +
-      "  🎯 Apuntar: U I O K\n" +
-      "  💥 Disparar: ENTER",
+      485,
+      "🎮 CONTROLES:\n\n" +
+      "🎯 Jugador 1: A|D (mover) • Q|W|E|S (apuntar) • ESPACIO (disparar)\n" +
+      "🎯 Jugador 2: J|L (mover) • U|I|O|K (apuntar) • ENTER (disparar)",
       {
-        fontSize: "12px",
+        fontSize: "14px",
         fill: "#ffe66d",
         fontFamily: "Arial",
+        fontStyle: "bold",
         align: "center",
-        lineSpacing: 2,
+        lineSpacing: 4,
       },
     )
     controls.setOrigin(0.5)
 
-    // Player selection with improved design
-    const playerText = this.add.text(400, 380, "🎯 SELECCIONA MODO DE JUEGO", {
-      fontSize: "26px",
+    // Enhanced player selection section
+    const playerText = this.add.text(400, 380, "🎯 SELECCIONA TU MODO DE JUEGO", {
+      fontSize: "28px",
       fill: "#4ecdc4",
       fontFamily: "Arial",
       fontStyle: "bold",
+      stroke: "#ffffff",
+      strokeThickness: 2,
     })
     playerText.setOrigin(0.5)
+
+    // Pulsing effect for player selection text
+    this.tweens.add({
+      targets: playerText,
+      scaleX: 1.03,
+      scaleY: 1.03,
+      duration: 1800,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    })
 
     // 1 Player button with enhanced styling
     const onePlayerButton = this.add.container(300, 440)
@@ -205,7 +316,7 @@ class MenuScene extends Phaser.Scene {
     onePlayerText.setOrigin(0.5)
 
     onePlayerButton.add([onePlayerBg, onePlayerText])
-    onePlayerButton.setInteractive(new Phaser.Geom.Rectangle(-80, -20, 160, 40), Phaser.Geom.Rectangle.Contains)
+    onePlayerButton.setInteractive({ useHandCursor: true })
 
     // 2 Players button with enhanced styling
     const twoPlayersButton = this.add.container(500, 440)
@@ -224,7 +335,7 @@ class MenuScene extends Phaser.Scene {
     twoPlayersText.setOrigin(0.5)
 
     twoPlayersButton.add([twoPlayersBg, twoPlayersText])
-    twoPlayersButton.setInteractive(new Phaser.Geom.Rectangle(-80, -20, 160, 40), Phaser.Geom.Rectangle.Contains)
+    twoPlayersButton.setInteractive({ useHandCursor: true })
 
     // Enhanced button hover effects
     const setHoverEffect = (button, bg, text, originalColor) => {
@@ -274,6 +385,19 @@ class MenuScene extends Phaser.Scene {
 
     twoPlayersButton.on("pointerdown", () => {
       this.scene.start("GameScene", { numPlayers: 2 })
+    })
+
+    // Add keyboard controls for menu
+    this.input.keyboard.on('keydown-ONE', () => {
+      this.scene.start("GameScene", { numPlayers: 1 })
+    })
+
+    this.input.keyboard.on('keydown-TWO', () => {
+      this.scene.start("GameScene", { numPlayers: 2 })
+    })
+
+    this.input.keyboard.on('keydown-SPACE', () => {
+      this.scene.start("GameScene", { numPlayers: 1 })
     })
 
     // High scores preview
@@ -807,6 +931,17 @@ class GameScene extends Phaser.Scene {
       this.updateAimPreview()
     })
 
+    // Update trajectory preview continuously
+    this.time.addEvent({
+      delay: 50, // Update every 50ms for smooth preview
+      callback: () => {
+        if (!this.gameOver && !this.nameInputActive) {
+          this.updateAimPreview()
+        }
+      },
+      loop: true
+    })
+
     // Initialize bubble grid
     this.initializeBubbleGrid()
 
@@ -861,6 +996,13 @@ class GameScene extends Phaser.Scene {
       fontStyle: "bold",
     }).setOrigin(0.5)
 
+    // Add debug text to show current controls
+    this.debugText = this.add.text(10, 570, "DEBUG: Presiona teclas para probar controles", {
+      fontSize: "12px",
+      fill: "#ffffff",
+      fontFamily: "Arial",
+    }).setDepth(100)
+
     // Pulsing animation for current player indicator
     this.tweens.add({
       targets: playerIndicatorBg,
@@ -912,154 +1054,117 @@ class GameScene extends Phaser.Scene {
       }
 
       // Use alternative controls for easier testing
-      if (this.simultaneousMode) {
-        // Simultaneous mode: both players can control at the same time
-        for (let playerIndex = 0; playerIndex < this.numPlayers; playerIndex++) {
-          const shooter = this.shooters[playerIndex]
-          const bubble = this.currentBubbles[playerIndex]
+      // Simple direct controls for testing - bypass all conditions
+      // Player 1 controls (A/D/Q/E/W/S/Space)
+      if (this.shooters[0]) {
+        const shooter1 = this.shooters[0]
+        const bubble1 = this.currentBubbles[0]
 
-          if (playerIndex === 0) {
-            // Player 1 - Alternative controls (A/D, Q/E, W/S, Space)
-            // Movement left - A key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_LEFT) && !this.gameOver && !this.nameInputActive && shooter.x > 50) {
-              shooter.x -= 20
-              if (bubble) bubble.x = shooter.x
-              this.updateAimPreview()
-            }
-
-            // Movement right - D key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_RIGHT) && !this.gameOver && !this.nameInputActive && shooter.x < 750) {
-              shooter.x += 20
-              if (bubble) bubble.x = shooter.x
-              this.updateAimPreview()
-            }
-
-            // Aim left - Q key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_AIM_LEFT) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              this.adjustAim(-5, playerIndex)
-            }
-
-            // Aim right - E key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_AIM_RIGHT) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              this.adjustAim(5, playerIndex)
-            }
-
-            // Aim up - W key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_AIM_UP) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              this.adjustAimVertical(-5, playerIndex)
-            }
-
-            // Aim down - S key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_AIM_DOWN) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              this.adjustAimVertical(5, playerIndex)
-            }
-
-            // Shoot - Space key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_SHOOT) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              if (!this.shotThisFrame) {
-                this.shootBubble(playerIndex)
-                this.shotThisFrame = true
-              }
-            }
-          }
-
-          if (playerIndex === 1) {
-            // Player 2 - Alternative controls (J/L, U/O, I/K, Enter)
-            // Movement left - J key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P2_LEFT) && !this.gameOver && !this.nameInputActive && shooter.x > 50) {
-              shooter.x -= 20
-              if (bubble) bubble.x = shooter.x
-              this.updateAimPreview()
-            }
-
-            // Movement right - L key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P2_RIGHT) && !this.gameOver && !this.nameInputActive && shooter.x < 750) {
-              shooter.x += 20
-              if (bubble) bubble.x = shooter.x
-              this.updateAimPreview()
-            }
-
-            // Aim left - U key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P2_AIM_LEFT) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              this.adjustAim(-5, playerIndex)
-            }
-
-            // Aim right - O key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P2_AIM_RIGHT) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              this.adjustAim(5, playerIndex)
-            }
-
-            // Aim up - I key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P2_AIM_UP) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              this.adjustAimVertical(-5, playerIndex)
-            }
-
-            // Aim down - K key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P2_AIM_DOWN) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              this.adjustAimVertical(5, playerIndex)
-            }
-
-            // Shoot - Enter key
-            if (isKeyPressed(ALTERNATIVE_CONTROLS.P2_SHOOT) && !this.gameOver && !this.nameInputActive && bubble && !bubble.launched) {
-              if (!this.shotThisFrame) {
-                this.shootBubble(playerIndex)
-                this.shotThisFrame = true
-              }
-            }
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyA'))) {
+          if (shooter1.x > 50) {
+            shooter1.x -= 20
+            if (bubble1) bubble1.x = shooter1.x
+            this.updateAimPreview()
           }
         }
-      } else {
-        // Turn-based mode (single player or turn-based multiplayer)
-        const currentShooter = this.shooters[this.currentPlayer]
-        const currentBubble = this.currentBubbles[this.currentPlayer]
 
-        // Movement left - A key
-        if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_LEFT) && !this.gameOver && !this.nameInputActive && currentShooter.x > 50) {
-          currentShooter.x -= 20
-          if (currentBubble) {
-            currentBubble.x = currentShooter.x
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyD'))) {
+          if (shooter1.x < 750) {
+            shooter1.x += 20
+            if (bubble1) bubble1.x = shooter1.x
+            this.updateAimPreview()
           }
-          this.updateAimPreview()
         }
 
-        // Movement right - D key
-        if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_RIGHT) && !this.gameOver && !this.nameInputActive && currentShooter.x < 750) {
-          currentShooter.x += 20
-          if (currentBubble) {
-            currentBubble.x = currentShooter.x
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyQ'))) {
+          if (bubble1 && !bubble1.launched) {
+            this.adjustAim(-5, 0)
           }
-          this.updateAimPreview()
         }
 
-        // Aim left - Q key
-        if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_AIM_LEFT) && !this.gameOver && !this.nameInputActive && currentBubble && !currentBubble.launched) {
-          this.adjustAim(-5)
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyE'))) {
+          if (bubble1 && !bubble1.launched) {
+            this.adjustAim(5, 0)
+          }
         }
 
-        // Aim right - E key
-        if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_AIM_RIGHT) && !this.gameOver && !this.nameInputActive && currentBubble && !currentBubble.launched) {
-          this.adjustAim(5)
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyW'))) {
+          if (bubble1 && !bubble1.launched) {
+            this.adjustAimVertical(-5, 0)
+          }
         }
 
-        // Aim up - W key
-        if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_AIM_UP) && !this.gameOver && !this.nameInputActive && currentBubble && !currentBubble.launched) {
-          this.adjustAimVertical(-5)
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyS'))) {
+          if (bubble1 && !bubble1.launched) {
+            this.adjustAimVertical(5, 0)
+          }
         }
 
-        // Aim down - S key
-        if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_AIM_DOWN) && !this.gameOver && !this.nameInputActive && currentBubble && !currentBubble.launched) {
-          this.adjustAimVertical(5)
-        }
-
-        // Shoot - Space key
-        if (isKeyPressed(ALTERNATIVE_CONTROLS.P1_SHOOT) && !this.gameOver && !this.nameInputActive && currentBubble && !currentBubble.launched) {
-          if (!this.shotThisFrame) {
-            this.shootBubble(this.currentPlayer)
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('Space'))) {
+          if (bubble1 && !bubble1.launched && !this.shotThisFrame) {
+            this.shootBubble(0)
             this.shotThisFrame = true
           }
-        } else {
-          this.shotThisFrame = false
         }
+      }
+
+      // Player 2 controls (J/L/U/O/I/K/Enter) - only if 2 players
+      if (this.numPlayers === 2 && this.shooters[1]) {
+        const shooter2 = this.shooters[1]
+        const bubble2 = this.currentBubbles[1]
+
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyJ'))) {
+          if (shooter2.x > 50) {
+            shooter2.x -= 20
+            if (bubble2) bubble2.x = shooter2.x
+            this.updateAimPreview()
+          }
+        }
+
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyL'))) {
+          if (shooter2.x < 750) {
+            shooter2.x += 20
+            if (bubble2) bubble2.x = shooter2.x
+            this.updateAimPreview()
+          }
+        }
+
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyU'))) {
+          if (bubble2 && !bubble2.launched) {
+            this.adjustAim(-5, 1)
+          }
+        }
+
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyO'))) {
+          if (bubble2 && !bubble2.launched) {
+            this.adjustAim(5, 1)
+          }
+        }
+
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyI'))) {
+          if (bubble2 && !bubble2.launched) {
+            this.adjustAimVertical(-5, 1)
+          }
+        }
+
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyK'))) {
+          if (bubble2 && !bubble2.launched) {
+            this.adjustAimVertical(5, 1)
+          }
+        }
+
+        if (this.input.keyboard.checkDown(this.input.keyboard.addKey('Enter'))) {
+          if (bubble2 && !bubble2.launched && !this.shotThisFrame) {
+            this.shootBubble(1)
+            this.shotThisFrame = true
+          }
+        }
+      }
+
+      // Reset shot flag
+      if (!this.input.keyboard.checkDown(this.input.keyboard.addKey('Space')) &&
+          !this.input.keyboard.checkDown(this.input.keyboard.addKey('Enter'))) {
+        this.shotThisFrame = false
       }
 
       // Reset shot flag if no shoot keys are pressed
@@ -1069,7 +1174,7 @@ class GameScene extends Phaser.Scene {
     }
 
     // Initialize keyboard keys at the beginning of create()
-    this.input.keyboard.addKeys('A,D,Q,E,W,S,SPACE,J,L,U,O,I,K,ENTER')
+    this.input.keyboard.addKeys('A,D,Q,E,W,S,SPACE,J,L,U,O,I,K,ENTER,ONE,TWO')
 
     // Update controls in update loop
     this.updateControls = setupArcadeControls
@@ -1114,6 +1219,31 @@ class GameScene extends Phaser.Scene {
 
     // Update controls
     if (this.updateControls) this.updateControls()
+
+    // Debug: Show pressed keys and cannon positions
+    const pressedKeys = []
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyA'))) pressedKeys.push('A')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyD'))) pressedKeys.push('D')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyQ'))) pressedKeys.push('Q')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyE'))) pressedKeys.push('E')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyW'))) pressedKeys.push('W')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyS'))) pressedKeys.push('S')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('Space'))) pressedKeys.push('SPACE')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyJ'))) pressedKeys.push('J')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyL'))) pressedKeys.push('L')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyU'))) pressedKeys.push('U')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyO'))) pressedKeys.push('O')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyI'))) pressedKeys.push('I')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('KeyK'))) pressedKeys.push('K')
+    if (this.input.keyboard.checkDown(this.input.keyboard.addKey('Enter'))) pressedKeys.push('ENTER')
+
+    const cannon1X = this.shooters[0] ? Math.round(this.shooters[0].x) : 'N/A'
+    const cannon2X = this.numPlayers === 2 && this.shooters[1] ? Math.round(this.shooters[1].x) : 'N/A'
+    const gameOver = this.gameOver ? 'SÍ' : 'NO'
+
+    if (this.debugText) {
+      this.debugText.setText(`Teclas: ${pressedKeys.join(', ')} | P1 X: ${cannon1X} | P2 X: ${cannon2X} | GameOver: ${gameOver}`)
+    }
 
     // Check if any bubble has reached the game over line
     for (let row = 0; row < this.bubbleGrid.length; row++) {
@@ -1461,14 +1591,18 @@ class GameScene extends Phaser.Scene {
         }
 
         // Draw dotted line effect - more frequent dots for better visibility
-        if (i % 3 === 0) { // Every 3rd point for dotted effect
-          this.aimPreview.fillStyle(bubble.color, 1.0)
-          this.aimPreview.fillCircle(currentX, currentY, 4)
+         if (i % 2 === 0) { // Every 2nd point for dotted effect
+           this.aimPreview.fillStyle(bubble.color, 1.0)
+           this.aimPreview.fillCircle(currentX, currentY, 5)
 
-          // Add glow effect around dots
-          this.aimPreview.fillStyle(bubble.color, 0.6)
-          this.aimPreview.fillCircle(currentX, currentY, 8)
-        }
+           // Add glow effect around dots
+           this.aimPreview.fillStyle(bubble.color, 0.7)
+           this.aimPreview.fillCircle(currentX, currentY, 10)
+
+           // Add outer glow
+           this.aimPreview.fillStyle(bubble.color, 0.3)
+           this.aimPreview.fillCircle(currentX, currentY, 15)
+         }
 
         // Stop if we hit the danger zone
         if (currentY >= 480) break
@@ -2024,25 +2158,6 @@ class GameScene extends Phaser.Scene {
 }
 
 function getHighScores() {
-  const scores = localStorage.getItem("bubbleShooterHighScores")
-  return scores ? JSON.parse(scores) : []
-}
-
-function saveHighScore(name, score) {
-  const highScores = getHighScores()
-  highScores.push({ name, score, date: new Date().toLocaleDateString() })
-  highScores.sort((a, b) => b.score - a.score)
-  const top10 = highScores.slice(0, 10)
-  localStorage.setItem("bubbleShooterHighScores", JSON.stringify(top10))
-}
-
-function isHighScore(score) {
-  const highScores = getHighScores()
-  return highScores.length < 10 || score > highScores[highScores.length - 1].score
-}
-
-// Función auxiliar para puntajes
-function getHighScores() {
     try {
         const scores = localStorage.getItem('bubbleShooterScores');
         return scores ? JSON.parse(scores) : [];
@@ -2062,6 +2177,11 @@ function saveHighScore(name, score) {
     }
 }
 
+function isHighScore(score) {
+  const highScores = getHighScores()
+  return highScores.length < 10 || score > highScores[highScores.length - 1].score
+}
+
 // Initialize the game after scenes are defined
 const config = {
     type: Phaser.AUTO,
@@ -2072,7 +2192,7 @@ const config = {
     dom: {
         createContainer: true
     },
-    scene: [MenuScene, GameScene],
+    scene: [MenuScene, GameScene, GameOverScene],
     physics: {
         default: 'arcade',
         arcade: {
