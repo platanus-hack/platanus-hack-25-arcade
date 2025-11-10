@@ -8,9 +8,10 @@ Create an engaging, fun arcade game in **game.js** using **Phaser 3** (v3.87.0) 
 
 ## ⚠️ IMPORTANT: Files to Edit
 
-**ONLY edit these two files:**
+**ONLY edit these three files:**
 - `game.js` - Your game code
 - `metadata.json` - Game name and description
+- `cover.png` - Game cover image (800x600 pixels)
 
 **DO NOT edit any other files** (including index.html, check-restrictions files, config files, etc.)
 
@@ -33,8 +34,9 @@ Create an engaging, fun arcade game in **game.js** using **Phaser 3** (v3.87.0) 
 
 1. **Edit game.js**: Write your game code in this single file
 2. **Update metadata.json**: Set `game_name` and `description`
-3. **Check restrictions**: Run `pnpm check-restrictions` frequently
-4. **DO NOT start dev servers**: The user will handle running `pnpm dev` - do not run it yourself
+3. **Create cover.png**: Design an 800x600 pixel cover image for your game
+4. **Check restrictions**: Run `pnpm check-restrictions` frequently
+5. **DO NOT start dev servers**: The user will handle running `pnpm dev` - do not run it yourself
 
 ## Phaser 3 Resources
 

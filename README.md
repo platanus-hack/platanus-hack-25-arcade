@@ -6,11 +6,16 @@ At [Platanus Hack 25](https://hack.platan.us) we will have an arcade machine. Wh
 
 ---
 
-## 🏆 Prize
+## 🏆 Prizes
 
-- 🎯 **Your game will be playing non-stop in the hackathon arcade**
-- 💵 **$100 USD in cash**
+**🥇 First Place:**
+- 💵 **$250 USD in cash**
 - 🎟️ **A slot to participate in Platanus Hack**
+- 🎮 **Your game featured on the arcade machine**
+
+**🥈 Second Place:**
+- 💵 **$100 USD in cash**
+- 🎮 **Your game featured on the arcade machine**
 
 ---
 
@@ -35,21 +40,50 @@ Your game must comply with these technical restrictions:
 - ✅ **Generated audio tones** - Using Phaser's Web Audio API
 - ✅ **Canvas-based rendering and effects**
 
-### Controls
-- 🕹️ Keep controls simple - they will be mapped to an arcade controller
-- 🎮 Recommended: Arrow keys, WASD, spacebar, or simple mouse clicks
+# 🕹️ Controls
+
+Your game will run on a real arcade cabinet with physical joysticks and buttons!
+
+![Arcade Button Layout](https://hack.platan.us/assets/images/arcade/button-layout.webp)
+
+## Arcade Button Mapping
+
+The arcade cabinet sends specific key codes when buttons are pressed:
+
+**Player 1:**
+- **Joystick**: `P1U`, `P1D`, `P1L`, `P1R` (Up, Down, Left, Right)
+- **Joystick Diagonals**: `P1DL`, `P1DR` (Down-Left, Down-Right)
+- **Action Buttons**: `P1A`, `P1B`, `P1C` (top row) / `P1X`, `P1Y`, `P1Z` (bottom row)
+- **Start**: `START1`
+
+**Player 2:**
+- **Joystick**: `P2U`, `P2D`, `P2L`, `P2R`
+- **Joystick Diagonals**: `P2DL`, `P2DR`
+- **Action Buttons**: `P2A`, `P2B`, `P2C` / `P2X`, `P2Y`, `P2Z`
+- **Start**: `START2`
+
+## Testing Locally
+
+For local testing, you can map these arcade buttons to keyboard keys. The mapping supports **multiple keyboard keys per arcade button** (useful for alternatives like WASD + Arrow Keys). See `game.js` for the complete `ARCADE_CONTROLS` mapping template.
+
+By default:
+- Player 1 uses **WASD** (joystick) and **U/I/O/J/K/L** (action buttons)
+- Player 2 uses **Arrow Keys** (joystick) and **R/T/Y/F/G/H** (action buttons)
+
+💡 **Tip**: Keep controls simple - design for joystick + 1-2 action buttons for the best arcade experience!
 
 ---
 
 ## ⏰ Deadline & Submission
 
-**Deadline:** Friday, November 14, 2025 at 23:59 (Santiago time)
+**Deadline:** Sunday, November 10, 2025 at 23:59 (Santiago time)
 
 ### How to Submit
 
 Submitting your project is easy:
 
-1. **Save your changes** - Make sure `game.js` and `metadata.json` are ready
+1. **Save your changes** - Make sure `game.js`, `metadata.json`, and `cover.png` are ready
+   - **Important:** Your game must include a custom `cover.png` file (800x600 pixels) showcasing your game
 2. **Git push** - Push your code to your repository:
    ```bash
    git add .
@@ -78,6 +112,7 @@ This starts a server at `http://localhost:3000` with live restriction checking.
 ### 3. Build Your Game
 - **Edit `game.js`** - Write your arcade game code
 - **Update `metadata.json`** - Set your game name and description
+- **Create `cover.png`** - Design an 800x600 pixel cover image for your game
 - **Watch the dev server** - It shows live updates on file size and restrictions
 
 ---

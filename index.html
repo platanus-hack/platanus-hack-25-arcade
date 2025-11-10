@@ -36,16 +36,16 @@
     const { useState, useEffect } = React;
 
     // Submission Modal Component
-    function SubmissionModal({ isOpen, onClose, checks, gitInfo }) {
+    function SubmissionModal({ isOpen, onClose, checks, gitInfo, coverCheck }) {
       const [step, setStep] = useState(1);
 
       if (!isOpen) return null;
 
       const handleNext = () => {
-        if (checks?.passed && gitInfo?.isGitRepo) {
+        if (checks?.passed && gitInfo?.isGitRepo && coverCheck?.isValid) {
           setStep(2);
         } else {
-          alert('Please make sure all checks pass and you have a valid Git repository configured.');
+          alert('Please make sure all checks pass, you have a valid 800x600 PNG cover, and a valid Git repository configured.');
         }
       };
 
@@ -72,14 +72,15 @@
 
                 <div className="p-6">
                   <div className="text-center text-gray-500 text-xs uppercase tracking-wider mb-4">Step 1 of 2</div>
-                  
-                  <div className="bg-orange-500/10 border border-orange-500/30 rounded p-3 text-orange-400 text-sm mb-6">
-                    ⚠️ <strong>Important:</strong> Only <strong>1 submission per GitHub user</strong> is allowed. <strong>After submission, no changes are allowed!</strong> Make sure your game is complete and all restrictions are met!
-                  </div>
 
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-white mb-3">📊 Current Status</h3>
                     <div className="space-y-2">
+                      <div className="flex items-center bg-white/[0.03] rounded p-2 text-sm">
+                        <span className="text-base mr-2">{coverCheck?.isValid ? '✅' : '❌'}</span>
+                        <span className="flex-1 text-gray-300">Custom Cover (800x600)</span>
+                        <span className="font-medium">{coverCheck?.isValid ? 'Valid' : 'Invalid'}</span>
+                      </div>
                       <div className="flex items-center bg-white/[0.03] rounded p-2 text-sm">
                         <span className="text-base mr-2">{checks?.sizeKB <= 50 ? '✅' : '❌'}</span>
                         <span className="flex-1 text-gray-300">File Size</span>
@@ -132,6 +133,18 @@
                   <div className="text-center text-gray-500 text-xs uppercase tracking-wider mb-4">Step 2 of 2</div>
 
                   <div className="mb-6">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-white mb-3">🎮 Game Cover</h3>
+                    <div className="bg-white/[0.03] rounded p-3 flex justify-center">
+                      <img
+                        src="/cover.png"
+                        alt="Game Cover"
+                        className="max-w-full h-auto rounded border border-white/20"
+                        style={{ maxHeight: '200px' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-white mb-3">📌 Repository</h3>
                     <div className="bg-white/[0.03] rounded p-3">
                       <div className="text-xs text-gray-400 mb-2">GitHub Repository URL:</div>
@@ -143,10 +156,10 @@
 
                   <div className="mb-6">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-white mb-3">✅ Final Checklist</h3>
-                    <div className="bg-orange-500/10 border border-orange-500/30 rounded p-4 text-orange-400 text-sm leading-relaxed">
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded p-4 text-blue-400 text-sm leading-relaxed">
                       <p className="mb-3">📤 <strong>Make sure to push your code to GitHub first!</strong></p>
                       <p className="mb-3">Run: <code className="bg-black/30 px-2 py-1 rounded">git push origin main</code></p>
-                      <p className="mb-3">🔒 <strong>After submission, no changes are allowed!</strong> This is your final version.</p>
+                      <p className="mb-3">🔄 <strong>You can keep pushing updates!</strong> Any changes pushed to your repository will be accepted until the deadline: <strong>Monday, November 10, 2025 at 23:59 CLT</strong>.</p>
                       <p>If you win the contest, you will be contacted via <strong>GitHub issue</strong> in your forked repository!</p>
                     </div>
                   </div>
@@ -172,23 +185,28 @@
       const [metadata, setMetadata] = useState({ game_name: 'Loading...', description: 'Loading game information...' });
       const [checks, setChecks] = useState(null);
       const [gitInfo, setGitInfo] = useState(null);
+      const [coverCheck, setCoverCheck] = useState(null);
       const [isModalOpen, setIsModalOpen] = useState(false);
+      const [timeRemaining, setTimeRemaining] = useState('');
 
       const loadData = async () => {
         try {
-          const [metadataRes, checksRes, gitRes] = await Promise.all([
+          const [metadataRes, checksRes, gitRes, coverRes] = await Promise.all([
             fetch('/metadata.json'),
             fetch('/api/checks'),
-            fetch('/api/git-info')
+            fetch('/api/git-info'),
+            fetch('/api/cover-check')
           ]);
 
           const metadataData = await metadataRes.json();
           const checksData = await checksRes.json();
           const gitData = await gitRes.json();
+          const coverData = await coverRes.json();
 
           setMetadata(metadataData);
           setChecks(checksData);
           setGitInfo(gitData);
+          setCoverCheck(coverData);
         } catch (error) {
           console.error('Failed to load data:', error);
         }
@@ -200,8 +218,40 @@
         return () => clearInterval(interval);
       }, []);
 
+      // Countdown timer for deadline
+      useEffect(() => {
+        const updateCountdown = () => {
+          // Deadline: November 10, 2025 at 23:59 Chile time (UTC-3)
+          const deadline = new Date('2025-11-10T23:59:00-03:00');
+          const now = new Date();
+          const diff = deadline - now;
+
+          if (diff <= 0) {
+            setTimeRemaining('DEADLINE PASSED');
+          } else {
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            if (days > 0) {
+              setTimeRemaining(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+            } else if (hours > 0) {
+              setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
+            } else {
+              setTimeRemaining(`${minutes}m ${seconds}s`);
+            }
+          }
+        };
+
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000);
+        return () => clearInterval(interval);
+      }, []);
+
       const isPlaceholder = metadata.game_name?.includes('<') || metadata.description?.includes('<');
-      const canSubmit = !isPlaceholder && checks?.passed;
+      const isDeadlinePassed = timeRemaining === 'DEADLINE PASSED';
+      const canSubmit = !isPlaceholder && checks?.passed && coverCheck?.isValid && !isDeadlinePassed;
 
       const percentage = Math.min((checks?.sizeKB / 50) * 100 || 0, 100);
       const barColor = percentage < 50 ? 'bg-green-500' : percentage < 80 ? 'bg-orange-500' : 'bg-red-500';
@@ -215,7 +265,7 @@
               <div className="text-[0.7rem] text-gray-600 uppercase tracking-widest">arcade challenge</div>
             </header>
 
-            <div className={`mb-5 pb-5 border-b border-white/10 ${isPlaceholder ? 'relative' : ''}`}>
+            <div className={`mb-5 pb-5 border-b border-white/10 ${(isPlaceholder || !coverCheck?.isChanged) ? 'relative' : ''}`}>
               <h2 className={`text-base font-semibold mb-1.5 ${isPlaceholder ? 'text-orange-500' : 'text-white'}`}>
                 {metadata.game_name}
               </h2>
@@ -225,6 +275,11 @@
               {isPlaceholder && (
                 <div className="mt-2 text-[0.7rem] text-orange-500 bg-orange-500/10 border border-orange-500/30 rounded px-2 py-1.5">
                   ⚠️ Update metadata.json
+                </div>
+              )}
+              {coverCheck && !coverCheck.isValid && (
+                <div className="mt-2 text-[0.7rem] text-orange-500 bg-orange-500/10 border border-orange-500/30 rounded px-2 py-1.5">
+                  ⚠️ {coverCheck.message}
                 </div>
               )}
             </div>
@@ -237,7 +292,7 @@
                 <div className={`h-full ${barColor} transition-all duration-300`} style={{ width: `${percentage}%` }}></div>
               </div>
               <div className="text-[0.7rem] text-gray-500 mt-1.5 text-right">of 50 KB</div>
-      </div>
+            </div>
 
             <div className="flex-1">
               <h3 className="mb-4 text-[0.85rem] font-medium text-gray-500 uppercase tracking-wider">checks</h3>
@@ -254,40 +309,52 @@
               </div>
               <div className={`mt-4 text-center py-3 rounded text-xs ${checks?.passed ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                 {checks?.passed ? 'all checks passed' : 'some checks failed'}
-        </div>
-      </div>
+              </div>
+            </div>
 
             <div className="mt-6 pt-4 border-t border-white/10">
-              <button 
+              {isDeadlinePassed ? (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded text-center">
+                  <div className="text-red-400 text-sm font-medium mb-1">⏰ Submission Deadline Passed</div>
+                  <div className="text-red-400/80 text-xs">Submissions closed on Nov 10, 2025 at 23:59 CLT</div>
+                </div>
+              ) : (
+                <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded text-center">
+                  <div className="text-blue-400 text-xs uppercase tracking-wider mb-1">Time Remaining</div>
+                  <div className="text-blue-300 text-lg font-bold tabular-nums">{timeRemaining || 'Loading...'}</div>
+                </div>
+              )}
+              <button
                 onClick={() => setIsModalOpen(true)}
                 disabled={!canSubmit}
                 className={`w-full py-3 rounded text-sm font-medium uppercase tracking-wider transition-all ${
-                  canSubmit 
-                    ? 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/15 hover:border-green-500/50 cursor-pointer' 
+                  canSubmit
+                    ? 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/15 hover:border-green-500/50 cursor-pointer'
                     : 'bg-white/[0.02] text-gray-600 border border-white/5 cursor-not-allowed opacity-60'
                 }`}
               >
-          🚀 Submit
-        </button>
-      </div>
-    </div>
+                🚀 Submit
+              </button>
+            </div>
+          </div>
 
           {/* Main Content */}
           <div className="flex-1 flex flex-col items-center justify-center p-5">
-        <iframe
-          id="game-frame"
-          width="800"
-          height="600"
-          sandbox="allow-scripts allow-same-origin"
+            <iframe
+              id="game-frame"
+              width="800"
+              height="600"
+              sandbox="allow-scripts allow-same-origin"
               className="border-2 border-white/30 rounded shadow-2xl shadow-white/10"
-        ></iframe>
-      </div>
+            ></iframe>
+          </div>
 
-          <SubmissionModal 
-            isOpen={isModalOpen} 
+          <SubmissionModal
+            isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             checks={checks}
             gitInfo={gitInfo}
+            coverCheck={coverCheck}
           />
     </div>    
       );
