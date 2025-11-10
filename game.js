@@ -241,7 +241,8 @@ class MenuScene extends Phaser.Scene {
     const instructions = this.add.text(
       400,
       315,
-      "🎯 OBJETIVO: Conecta 3+ burbujas del mismo color\n\n⚠️ ¡CUIDADO! Después de 1 minuto las burbujas caen automáticamente\n\n💎 ¡Elimina todas las burbujas para ganar!",
+      "\n"+
+      "🎯 OBJETIVO: Conecta 3+ burbujas del mismo color\n\n⚠️ ¡CUIDADO! \n Después de 1 minuto las burbujas caen automáticamente\n\n💎 ¡Elimina todas las burbujas para ganar!",
       {
         fontSize: "15px",
         fill: "#ffffff",
@@ -263,7 +264,9 @@ class MenuScene extends Phaser.Scene {
     const controls = this.add.text(
       400,
       445,
-      "🎮 CONTROLES:\n" +
+      "\n"+
+      "\n"+
+      "🎮 CONTROLES: presiona 1 o 2 para iniciar\n" +
       "🎯 J1: A|D (mover) • Q|W|E|S (apuntar) • ESPACIO (disparar)\n" +
       "🎯 J2: J|L (mover) • U|I|O|K (apuntar) • ENTER (disparar)",
       {
@@ -280,10 +283,10 @@ class MenuScene extends Phaser.Scene {
     // Enhanced player selection section - moved up to fit everything
     const playerText = this.add.text(400, 520, "🎯 SELECCIONA TU MODO DE JUEGO", {
       fontSize: "22px",
-      fill: "#4ecdc4",
+      fill: "#c8ff00ff",
       fontFamily: "Arial",
       fontStyle: "bold",
-      stroke: "#ffffff",
+      stroke: "#030000ff",
       strokeThickness: 2,
     })
     playerText.setOrigin(0.5)
@@ -486,11 +489,11 @@ class GameOverScene extends Phaser.Scene {
       })
     }
 
-    // Game Over title with enhanced styling
+    // Game Over title with enhanced styling - moved up
     const titleText = this.playerWon ? "🎉 ¡GANASTE!" : "💥 GAME OVER"
     const titleColor = this.playerWon ? "#4ecdc4" : "#ff6b6b"
-    const gameOverText = this.add.text(400, 150, titleText, {
-      fontSize: "72px",
+    const gameOverText = this.add.text(400, 80, titleText, {
+      fontSize: "64px",
       fill: titleColor,
       fontFamily: "Arial",
       fontStyle: "bold",
@@ -510,59 +513,64 @@ class GameOverScene extends Phaser.Scene {
       repeat: -1
     })
 
-    // Enhanced final statistics display
+    // Enhanced final statistics display - moved up and made larger
     const statsBg = this.add.graphics()
     statsBg.fillStyle(0x000000, 0.9)
-    statsBg.fillRoundedRect(200, 180, 400, 200, 20)
+    statsBg.fillRoundedRect(150, 140, 500, 280, 20)
     statsBg.lineStyle(4, 0x4ecdc4, 1)
-    statsBg.strokeRoundedRect(200, 180, 400, 200, 20)
+    statsBg.strokeRoundedRect(150, 140, 500, 280, 20)
 
-    const statsTitle = this.add.text(400, 200, "📊 ESTADÍSTICAS FINALES", {
-      fontSize: "24px",
+    const statsTitle = this.add.text(400, 170, "📊 ESTADÍSTICAS FINALES", {
+      fontSize: "28px",
       fill: "#ffe66d",
       fontFamily: "Arial",
       fontStyle: "bold",
     })
     statsTitle.setOrigin(0.5)
 
-    // Game time
+    // Game time - larger and more prominent
     const minutes = Math.floor(this.gameTime / 60)
     const seconds = Math.floor(this.gameTime % 60)
-    const timeText = this.add.text(250, 230, `⏱️ Tiempo: ${minutes}:${seconds.toString().padStart(2, '0')}`, {
-      fontSize: "16px",
+    const timeText = this.add.text(200, 210, `⏱️ TIEMPO JUGADO: ${minutes}:${seconds.toString().padStart(2, '0')}`, {
+      fontSize: "20px",
       fill: "#ffffff",
       fontFamily: "Arial",
+      fontStyle: "bold",
     })
 
-    // Layers cleared
-    const layersText = this.add.text(250, 250, `📚 Capas limpiadas: ${this.layersCleared}`, {
-      fontSize: "16px",
+    // Layers cleared - larger
+    const layersText = this.add.text(200, 240, `📚 CAPAS LIMPIADAS: ${this.layersCleared}`, {
+      fontSize: "20px",
       fill: "#ffffff",
       fontFamily: "Arial",
+      fontStyle: "bold",
     })
 
-    // Difficulty level
-    const difficultyText = this.add.text(250, 270, `🎯 Nivel de dificultad: ${this.difficultyLevel}`, {
-      fontSize: "16px",
+    // Difficulty level - larger
+    const difficultyText = this.add.text(200, 270, `🎯 NIVEL DE DIFICULTAD: ${this.difficultyLevel}`, {
+      fontSize: "20px",
       fill: "#ffffff",
       fontFamily: "Arial",
+      fontStyle: "bold",
     })
 
-    // Individual scores
+    // Individual scores - larger and more prominent
     for (let i = 0; i < this.numPlayers; i++) {
-      const yPos = 300 + (i * 25)
-      const playerScoreText = this.add.text(250, yPos, `🏆 Jugador ${i + 1}: ${this.finalScores[i]} puntos`, {
-        fontSize: "18px",
+      const yPos = 310 + (i * 30)
+      const playerScoreText = this.add.text(200, yPos, `🏆 JUGADOR ${i + 1}: ${this.finalScores[i]} PUNTOS`, {
+        fontSize: "22px",
         fill: i === 0 ? "#4ecdc4" : "#ff6b6b",
         fontFamily: "Arial",
         fontStyle: "bold",
+        stroke: "#ffffff",
+        strokeThickness: 1,
       })
     }
 
-    // Calculate and show total score
+    // Calculate and show total score - larger and more prominent
     const totalScore = this.finalScores.reduce((sum, score) => sum + score, 0)
-    const totalText = this.add.text(400, 350, `⭐ PUNTAJE TOTAL: ${totalScore}`, {
-      fontSize: "22px",
+    const totalText = this.add.text(400, 380, `⭐ PUNTAJE TOTAL: ${totalScore}`, {
+      fontSize: "26px",
       fill: "#ffe66d",
       fontFamily: "Arial",
       fontStyle: "bold",
@@ -572,28 +580,58 @@ class GameOverScene extends Phaser.Scene {
 
     // Check if it's a high score (only for losses, wins always save)
     if (this.playerWon) {
-      const congratsText = this.add.text(400, 270, "¡FELICITACIONES!", {
-        fontSize: "28px",
+      const congratsText = this.add.text(400, 430, "¡FELICITACIONES!", {
+        fontSize: "32px",
         fill: "#ffe66d",
         fontFamily: "Arial",
+        fontStyle: "bold",
+        stroke: "#4ecdc4",
+        strokeThickness: 2,
       })
       congratsText.setOrigin(0.5)
-      this.time.delayedCall(2000, () => this.showHighScoresAndRestart())
+
+      // Pulsing animation for congratulations
+      this.tweens.add({
+        targets: congratsText,
+        scaleX: 1.1,
+        scaleY: 1.1,
+        duration: 1000,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1
+      })
+
+      this.time.delayedCall(3000, () => this.showHighScoresAndRestart())
     } else {
       // For losses, check if any player got a high score
       const maxScore = Math.max(...this.finalScores)
       if (isHighScore(maxScore)) {
-        const highScoreText = this.add.text(400, 270, "NUEVO RÉCORD!", {
-          fontSize: "28px",
+        const highScoreText = this.add.text(400, 430, "NUEVO RÉCORD!", {
+          fontSize: "32px",
           fill: "#ffe66d",
           fontFamily: "Arial",
+          fontStyle: "bold",
+          stroke: "#ff6b6b",
+          strokeThickness: 2,
         })
         highScoreText.setOrigin(0.5)
 
-        const promptText = this.add.text(400, 310, "Ingresa tu nombre:", {
-          fontSize: "20px",
+        // Pulsing animation for new record
+        this.tweens.add({
+          targets: highScoreText,
+          scaleX: 1.1,
+          scaleY: 1.1,
+          duration: 1000,
+          ease: 'Sine.easeInOut',
+          yoyo: true,
+          repeat: -1
+        })
+
+        const promptText = this.add.text(400, 470, "Ingresa tus 3 iniciales:", {
+          fontSize: "24px",
           fill: "#fff",
           fontFamily: "Arial",
+          fontStyle: "bold",
         })
         promptText.setOrigin(0.5)
 
@@ -641,7 +679,7 @@ class GameOverScene extends Phaser.Scene {
         wrapper.style.textAlign = 'center'
 
         const prompt = document.createElement('div')
-        prompt.textContent = '¡NUEVO RÉCORD! Ingresa tu nombre para el #1:'
+        prompt.textContent = '¡NUEVO RÉCORD! Ingresa tus 3 iniciales para el #1:'
         prompt.style.color = '#ffe66d'
         prompt.style.fontFamily = 'Arial'
         prompt.style.marginBottom = '8px'
@@ -677,14 +715,13 @@ class GameOverScene extends Phaser.Scene {
         const cleanup = () => { try { container.removeChild(wrapper) } catch (e) { } }
 
         const submit = () => {
-          const name = (input.value || '').trim() || 'YOU'
-          // Actualizar el primer puesto en storage sin duplicar
-          const hs = getHighScores()
+          const name = (input.value || '').trim().toUpperCase() || 'YOU'
+          if (name.length > 3) return // Don't accept if longer than 3 chars
+
+          // Save the high score
           const maxScore = Math.max(...this.finalScores)
-          if (hs && hs.length > 0 && hs[0].score === maxScore) {
-            hs[0].name = name
-            try { localStorage.setItem('bubbleShooterScores', JSON.stringify(hs.slice(0,10))) } catch (e) {}
-          }
+          saveHighScore(name, maxScore)
+
           cleanup()
           // Mostrar lista top10
           showTop10.call(this)
@@ -722,51 +759,60 @@ class GameOverScene extends Phaser.Scene {
   createNameInput() {
     const input = document.createElement("input")
     input.type = "text"
-    input.maxLength = 15
-    input.placeholder = "Your name"
+    input.maxLength = 3
+    input.placeholder = "ABC"
     input.style.position = "absolute"
     input.style.left = "50%"
     input.style.top = "55%"
     input.style.transform = "translate(-50%, -50%)"
-    input.style.padding = "10px"
-    input.style.fontSize = "20px"
+    input.style.padding = "12px"
+    input.style.fontSize = "24px"
     input.style.textAlign = "center"
-    input.style.border = "2px solid #4ecdc4"
-    input.style.borderRadius = "5px"
+    input.style.border = "3px solid #ffd700"
+    input.style.borderRadius = "8px"
     input.style.backgroundColor = "#1a1a2e"
     input.style.color = "#fff"
     input.style.outline = "none"
     input.style.zIndex = "1000"
+    input.style.fontFamily = "Arial"
+    input.style.fontWeight = "bold"
+    input.style.textTransform = "uppercase"
 
     const container = document.getElementById("game-container")
     container.appendChild(input)
     input.focus()
 
     const button = document.createElement("button")
-    button.textContent = "SUBMIT"
+    button.textContent = "GUARDAR"
     button.style.position = "absolute"
     button.style.left = "50%"
-    button.style.top = "62%"
+    button.style.top = "65%"
     button.style.transform = "translate(-50%, -50%)"
-    button.style.padding = "10px 30px"
-    button.style.fontSize = "18px"
+    button.style.padding = "12px 40px"
+    button.style.fontSize = "20px"
     button.style.border = "none"
-    button.style.borderRadius = "5px"
+    button.style.borderRadius = "8px"
     button.style.backgroundColor = "#4ecdc4"
     button.style.color = "#1a1a2e"
     button.style.cursor = "pointer"
     button.style.fontWeight = "bold"
     button.style.zIndex = "1000"
+    button.style.fontFamily = "Arial"
 
     container.appendChild(button)
 
     const submitScore = () => {
-      const name = input.value.trim() || "Anonymous"
+      const name = input.value.trim().toUpperCase() || "YOU"
+      if (name.length > 3) return // Don't accept if longer than 3 chars
+
       const maxScore = Math.max(...this.finalScores)
       saveHighScore(name, maxScore)
 
       container.removeChild(input)
       container.removeChild(button)
+
+      // Update the ranking display
+      this.displayGameRanking()
 
       this.showHighScoresAndRestart()
     }
@@ -776,6 +822,11 @@ class GameOverScene extends Phaser.Scene {
       if (e.key === "Enter") {
         submitScore()
       }
+    })
+
+    // Auto-uppercase input
+    input.addEventListener("input", (e) => {
+      e.target.value = e.target.value.toUpperCase()
     })
   }
 
@@ -1013,7 +1064,7 @@ class GameScene extends Phaser.Scene {
       repeat: -1
     })
 
-    // Timer display
+    // Timer display - moved up
     const timerBg = this.add.graphics()
     timerBg.fillStyle(0xff6b6b, 0.9)
     timerBg.fillRoundedRect(650, 10, 120, 35, 5)
@@ -1027,7 +1078,7 @@ class GameScene extends Phaser.Scene {
       fontStyle: "bold",
     }).setOrigin(0.5)
 
-    // Next layer warning
+    // Next layer warning - moved up
     const layerBg = this.add.graphics()
     layerBg.fillStyle(0xffa500, 0.9)
     layerBg.fillRoundedRect(650, 50, 120, 30, 5)
@@ -1040,6 +1091,23 @@ class GameScene extends Phaser.Scene {
       fontFamily: "Arial",
       fontStyle: "bold",
     }).setOrigin(0.5)
+
+    // High Scores Ranking Panel - new addition
+    const rankingBg = this.add.graphics()
+    rankingBg.fillStyle(0x000000, 0.8)
+    rankingBg.fillRoundedRect(620, 90, 160, 460, 10)
+    rankingBg.lineStyle(3, 0xffd700, 1)
+    rankingBg.strokeRoundedRect(620, 90, 160, 460, 10)
+
+    const rankingTitle = this.add.text(700, 110, "🏆 TOP 10", {
+      fontSize: "18px",
+      fill: "#ffd700",
+      fontFamily: "Arial",
+      fontStyle: "bold",
+    }).setOrigin(0.5)
+
+    // Display current high scores
+    this.displayGameRanking()
 
     this.displayHighScores()
 
@@ -1909,6 +1977,55 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  displayGameRanking() {
+    const highScores = getHighScores()
+
+    // Clear previous ranking texts
+    if (this.rankingTexts) {
+      this.rankingTexts.forEach(text => text.destroy())
+    }
+    this.rankingTexts = []
+
+    // Display top 10 scores
+    for (let i = 0; i < Math.min(10, highScores.length); i++) {
+      const score = highScores[i]
+      const yPos = 140 + (i * 20)
+
+      // Position indicator
+      let positionText = `${i + 1}.`
+      if (i === 0) positionText = "🥇"
+      else if (i === 1) positionText = "🥈"
+      else if (i === 2) positionText = "🥉"
+
+      const posText = this.add.text(635, yPos, positionText, {
+        fontSize: "12px",
+        fill: i < 3 ? "#ffd700" : "#ffffff",
+        fontFamily: "Arial",
+        fontStyle: "bold",
+      })
+
+      // Name and score
+      const nameScoreText = this.add.text(655, yPos, `${score.name}: ${score.score}`, {
+        fontSize: "11px",
+        fill: i < 3 ? "#ffd700" : "#ffffff",
+        fontFamily: "Arial",
+      })
+
+      this.rankingTexts.push(posText, nameScoreText)
+    }
+
+    // If no scores yet, show message
+    if (highScores.length === 0) {
+      const noScoresText = this.add.text(700, 200, "¡Sé el primero\nen el ranking!", {
+        fontSize: "14px",
+        fill: "#888888",
+        fontFamily: "Arial",
+        align: "center",
+      }).setOrigin(0.5)
+      this.rankingTexts.push(noScoresText)
+    }
+  }
+
   endGame() {
     // Marcar gameOver y bloquear controles
     this.gameOver = true
@@ -1931,19 +2048,7 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5)
     gameOverText.setDepth(30)
 
-    // Mostrar puntajes finales
-    let scoreText = ''
-    for (let i = 0; i < this.numPlayers; i++) {
-      scoreText += `Jugador ${i + 1}: ${this.scores[i]}\n`
-    }
-    const finalScoreText = this.add.text(400, 280, scoreText, {
-      fontSize: '24px',
-      fill: '#ffffff',
-      fontFamily: 'Arial',
-      align: 'center'
-    }).setOrigin(0.5)
-
-    // Determinar ganador con mejor presentación
+    // Determinar ganador con mejor presentación - moved down
     const maxScore = Math.max(...this.scores)
     const winners = this.scores.map((score, index) => score === maxScore ? index : -1).filter(index => index !== -1)
 
@@ -1958,10 +2063,10 @@ class GameScene extends Phaser.Scene {
 
     const winnerBg = this.add.graphics()
     winnerBg.fillStyle(0x000000, 0.7)
-    winnerBg.fillRoundedRect(300, 330, 200, 50, 10)
+    winnerBg.fillRoundedRect(250, 430, 300, 60, 15)
 
-    const winnerDisplay = this.add.text(400, 355, winnerText, {
-      fontSize: '24px',
+    const winnerDisplay = this.add.text(400, 460, winnerText, {
+      fontSize: '28px',
       fill: winnerColor,
       fontFamily: 'Arial',
       fontStyle: 'bold',
@@ -1982,16 +2087,16 @@ class GameScene extends Phaser.Scene {
       })
     }
 
-    // Enhanced restart button
-    const restartButton = this.add.container(400, 420)
+    // Enhanced restart button - moved down
+    const restartButton = this.add.container(400, 540)
     const restartBg = this.add.graphics()
     restartBg.fillStyle(0x4ecdc4, 1)
-    restartBg.fillRoundedRect(-100, -15, 200, 30, 8)
-    restartBg.lineStyle(2, 0xffffff, 1)
-    restartBg.strokeRoundedRect(-100, -15, 200, 30, 8)
+    restartBg.fillRoundedRect(-120, -18, 240, 36, 10)
+    restartBg.lineStyle(3, 0xffffff, 1)
+    restartBg.strokeRoundedRect(-120, -18, 240, 36, 10)
 
     const restartText = this.add.text(0, 0, '🔄 REINICIAR JUEGO', {
-      fontSize: '18px',
+      fontSize: '20px',
       fill: '#1a1a2e',
       fontFamily: 'Arial',
       fontStyle: 'bold',
@@ -1999,15 +2104,15 @@ class GameScene extends Phaser.Scene {
     restartText.setOrigin(0.5)
 
     restartButton.add([restartBg, restartText])
-    restartButton.setInteractive(new Phaser.Geom.Rectangle(-100, -15, 200, 30), Phaser.Geom.Rectangle.Contains)
+    restartButton.setInteractive(new Phaser.Geom.Rectangle(-120, -18, 240, 36), Phaser.Geom.Rectangle.Contains)
 
     // Button hover effect
     restartButton.on('pointerover', () => {
       restartBg.clear()
       restartBg.fillStyle(0xffffff, 1)
-      restartBg.fillRoundedRect(-100, -15, 200, 30, 8)
-      restartBg.lineStyle(2, 0x4ecdc4, 1)
-      restartBg.strokeRoundedRect(-100, -15, 200, 30, 8)
+      restartBg.fillRoundedRect(-120, -18, 240, 36, 10)
+      restartBg.lineStyle(3, 0x4ecdc4, 1)
+      restartBg.strokeRoundedRect(-120, -18, 240, 36, 10)
       restartText.setStyle({ fill: '#4ecdc4' })
 
       this.tweens.add({
@@ -2022,9 +2127,9 @@ class GameScene extends Phaser.Scene {
     restartButton.on('pointerout', () => {
       restartBg.clear()
       restartBg.fillStyle(0x4ecdc4, 1)
-      restartBg.fillRoundedRect(-100, -15, 200, 30, 8)
-      restartBg.lineStyle(2, 0xffffff, 1)
-      restartBg.strokeRoundedRect(-100, -15, 200, 30, 8)
+      restartBg.fillRoundedRect(-120, -18, 240, 36, 10)
+      restartBg.lineStyle(3, 0xffffff, 1)
+      restartBg.strokeRoundedRect(-120, -18, 240, 36, 10)
       restartText.setStyle({ fill: '#1a1a2e' })
 
       this.tweens.add({
