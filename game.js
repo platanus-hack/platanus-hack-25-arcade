@@ -3,7 +3,8 @@ const MOVE_SPD=340,START_Y=V_H-100,DASH_VEL=450,DASH_DUR=120,DASH_CD=800;
 const SCROLL_BASE=1.1,SCROLL_MAX=3.2;
 const COFFEE_DURATION=5000,BOOST_THRUST_MULT=1.25,BOOST_FUEL_MULT=0.55;
 const RESCUE_COOLDOWN=8000,FALL_TRIGGER_MS=1500;
-let sessionBest=0;
+const TOP_ENTRIES=3,MAX_SESSION_LIVES=3,SCORE_STORAGE_KEY='cowLiftTop';
+let sessionBest=0,sessionLives=MAX_SESSION_LIVES,topScores=[];
 const ARCADE_CONTROLS={
 P1U:['W','ArrowUp'],P1D:['S','ArrowDown'],P1L:['A','ArrowLeft'],P1R:['D','ArrowRight'],
 P1A:['Space','K','Z'],P1B:['L','X','Shift'],P1C:['U','C'],START1:['Enter','R']
@@ -18,6 +19,36 @@ o.type=t;o.frequency.value=f;g.gain.value=v;
 o.connect(g).connect(c.destination);o.start();o.stop(c.currentTime+d);
 }catch(_e){}
 }
+function loadTopScores(){
+let data=[];
+try{
+if(typeof localStorage!=='undefined'){
+const raw=localStorage.getItem(SCORE_STORAGE_KEY);
+if(raw)data=JSON.parse(raw)||[];
+}
+}catch(_e){}
+if(!Array.isArray(data))return [];
+return data.filter(e=>typeof e?.score==='number').map(e=>({
+score:Math.max(0,e.score|0),
+bananas:Math.max(0,e.bananas|0),
+ts:typeof e.ts==='number'?e.ts:Date.now()
+})).sort((a,b)=>b.score-a.score||b.bananas-a.bananas||a.ts-b.ts).slice(0,TOP_ENTRIES);
+}
+function saveTopScores(list){
+try{
+if(typeof localStorage!=='undefined'){
+localStorage.setItem(SCORE_STORAGE_KEY,JSON.stringify(list.slice(0,TOP_ENTRIES)));
+}
+}catch(_e){}
+}
+function registerTopScore(score,bananas){
+const entry={score,bananas,ts:Date.now()};
+topScores.push(entry);
+topScores.sort((a,b)=>b.score-a.score||b.bananas-a.bananas||a.ts-b.ts);
+topScores=topScores.slice(0,TOP_ENTRIES);
+saveTopScores(topScores);
+}
+topScores=loadTopScores();
 function textureExists(scene,key){return scene.textures.exists(key);}
 function createAllTextures(scene){
 if(textureExists(scene,'bg_space'))return;
@@ -236,6 +267,7 @@ class TitleScene extends Phaser.Scene{
 constructor(){super('TitleScene');}
 create(){
 createAllTextures(this);
+sessionLives=MAX_SESSION_LIVES;
 this.bgSpace=this.add.tileSprite(V_W/2,V_H/2,V_W,V_H,'bg_space').setScrollFactor(0).setAlpha(.18);
 this.bgClouds=this.add.tileSprite(V_W/2,V_H/2,V_W,V_H,'bg_clouds').setScrollFactor(0).setAlpha(.35);
 this.bgFar=this.add.tileSprite(V_W/2,V_H/2,V_W,V_H,'bg_far');
@@ -244,7 +276,7 @@ this.add.graphics().fillStyle(0x0a0515,.45).fillRect(0,0,V_W,V_H);
 this.add.text(V_W/2,V_H*.32,'COW LIFT',{
   fontFamily:'monospace',fontSize:'64px',color:'#35f6ff',align:'center',stroke:'#ff00ff',strokeThickness:6
 }).setOrigin(.5);
-this.add.text(V_W/2,V_H*.52,'Impulsa la vaca con jetpack, recoge platanos y cafe. Evita gatos.',{
+this.add.text(V_W/2,V_H*.52,`Impulsa la vaca con jetpack, recoge platanos y cafe.\nIntentos por sesion: ${MAX_SESSION_LIVES}`,{
   fontFamily:'monospace',fontSize:'20px',color:'#fff06d'
 }).setOrigin(.5);
 this.add.text(V_W/2,V_H*.61,'P1A: Jetpack | P1B: Dash Aereo | START1: Jugar',{
@@ -323,6 +355,7 @@ this.scoreTxt=this.add.text(0,0,'Altura 0m',{fontFamily:'monospace',fontSize:'20
 this.bananaTxt=this.add.text(0,0,'Bananas 0',{fontFamily:'monospace',fontSize:'18px',color:'#fff06d'}).setScrollFactor(0).setDepth(5);
 this.boostTxt=this.add.text(0,0,'Cafe: inactivo',{fontFamily:'monospace',fontSize:'16px',color:'#bdf8ff'}).setScrollFactor(0).setDepth(5);
 this.dashIcon=this.add.text(0,0,'DASH',{fontFamily:'monospace',fontSize:'16px',color:'#666'}).setOrigin(1,0).setScrollFactor(0).setDepth(5);
+this.livesTxt=this.add.text(0,0,`Vidas ${sessionLives}`,{fontFamily:'monospace',fontSize:'16px',color:'#ffef8a'}).setScrollFactor(0).setDepth(5);
 this.hudLeftX=this.hudBox.x;
 this.hudRightX=V_W-this.hudBox.w-16;
 this.hudSide='left';
@@ -346,6 +379,7 @@ this.bananaTxt.setPosition(hb.x+18,hb.y+82);
 this.boostTxt.setPosition(hb.x+18,hb.y+106);
 this.dashIcon.setPosition(hb.x+hb.w-12,hb.y+hb.h-28);
 if(this.boostFlash)this.boostFlash.setPosition(hb.x+hb.w/2,hb.y+hb.h+8);
+if(this.livesTxt)this.livesTxt.setPosition(hb.x+18,hb.y+hb.h+22);
 }
 update(t,dt){
 const s=this,p=s.p,cam=s.cameras.main;
@@ -501,6 +535,7 @@ s.scoreTxt.setText(`Altura ${s.score}m`);
 s.bananaTxt.setText(`Bananas ${s.bananaCount}`);
 s.boostTxt.setText(boostActive?`Cafe: ${(s.boostTimer/1000).toFixed(1)}s`:'Cafe: inactivo');
 s.boostTxt.setColor(boostActive?'#bdf8ff':'#5c6a78');
+if(s.livesTxt)s.livesTxt.setText(`Vidas ${Math.max(sessionLives,0)}`);
 s.dashIcon.setColor(s.dashCd<=0&&!grounded?'#ffff00':'#444');
 if(s.boostFlashTimer>0){
 s.boostFlashTimer=Math.max(0,s.boostFlashTimer-dt);
@@ -701,16 +736,27 @@ this.spawnPlat(wx,y,220,true);
 triggerGameOver(){
 if(this.over)return;
 this.over=true;
-sessionBest=Math.max(sessionBest,this.score|0);
+const finalScore=this.score|0;
+sessionLives=Math.max(0,sessionLives-1);
+registerTopScore(finalScore,this.bananaCount);
+sessionBest=Math.max(sessionBest,finalScore);
 tone(this,180,.5,'sawtooth',.12);
 this.cameras.main.shake(250,.02);
-this.time.delayedCall(280,()=>this.scene.start('GameOverScene',{score:this.score|0,bananas:this.bananaCount,best:sessionBest}));
+this.time.delayedCall(280,()=>this.scene.start('GameOverScene',{
+score:finalScore,bananas:this.bananaCount,best:sessionBest,lives:sessionLives,top:topScores.slice()
+}));
 }
 }
 
 class GameOverScene extends Phaser.Scene{
 constructor(){super('GameOverScene');}
-init(d){this.sc=d?.score||0;this.ban=d?.bananas||0;this.best=d?.best||0;}
+init(d){
+this.sc=d?.score||0;
+this.ban=d?.bananas||0;
+this.best=d?.best||0;
+this.lives=typeof d?.lives==='number'?d.lives:sessionLives;
+this.top=Array.isArray(d?.top)?d.top:topScores;
+}
 create(){
 createAllTextures(this);
 this.bgSpace=this.add.tileSprite(V_W/2,V_H/2,V_W,V_H,'bg_space').setScrollFactor(0).setAlpha(.22);
@@ -736,7 +782,19 @@ this.add.text(V_W/2,V_H*.63,`Record vigente: ${this.best}m`,{
   fontFamily:'monospace',fontSize:'20px',color:'#ffef8a'
 }).setOrigin(.5);
 }
-const prompt=this.add.text(V_W/2,V_H*.72,'Presiona START1 (Enter o R) para reintentar',{
+this.add.text(V_W/2,V_H*.68,`Intentos restantes: ${this.lives}`,{
+fontFamily:'monospace',fontSize:'20px',color:'#bdf8ff'
+}).setOrigin(.5);
+const boardLines=(this.top?.length?this.top:[]).map((entry,i)=>{
+const bananaTxt=entry.bananas===1?'banana':'bananas';
+return `${i+1}. ${entry.score}m · ${entry.bananas} ${bananaTxt}`;
+});
+const boardText=this.add.text(V_W/2,V_H*.77,`Top vuelos:\n${boardLines.length?boardLines.join('\n'):'Sin registros'}`,{
+fontFamily:'monospace',fontSize:'18px',color:'#bdf8ff',align:'center'
+}).setOrigin(.5);
+const promptMsg=this.lives>0?'Presiona START1 (Enter o R) para reintentar':'Sin intentos: START1 vuelve al titulo';
+const promptY=Math.min(V_H*.9,boardText.y+boardText.height/2+32);
+const prompt=this.add.text(V_W/2,promptY,promptMsg,{
 fontFamily:'monospace',fontSize:'22px',color:'#ffff00'
 }).setOrigin(.5);
 this.tweens.add({targets:prompt,alpha:{from:1,to:.3},duration:600,yoyo:true,repeat:-1});
@@ -747,7 +805,14 @@ this.bgSpace.tilePositionY+=.18;
 this.bgClouds.tilePositionY+=.26;
 this.bgFar.tilePositionY+=.25;
 this.bgMid.tilePositionY+=.4;
-if(justPressed(this,'START1')){tone(this,440,.1,'triangle',.1);this.scene.start('GameScene');}
+ if(justPressed(this,'START1')){
+ tone(this,440,.1,'triangle',.1);
+ if(this.lives>0){
+ this.scene.start('GameScene');
+ }else{
+ this.scene.start('TitleScene');
+ }
+ }
 }
 }
 
