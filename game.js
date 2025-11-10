@@ -588,7 +588,7 @@ let hazardInterval = 1200;
 let keysState = { left: false, right: false };
 let wasOnGround = false;
 let ammo = 3;
-let maxAmmo = 4;
+let maxAmmo = 10;
 let maxDepth = 0;
 let speed = 220;
 let jump = 300;
@@ -697,7 +697,6 @@ function create(data) {
   gameOver = false;
   score = 0;
   maxDepth = 0;
-  if (selectedMode === 'normal') maxAmmo = 10;
   ammo = maxAmmo;
   wasOnGround = false;
   keysState.left = keysState.right = false;
@@ -1746,7 +1745,6 @@ function onBulletHitsEnemy(scene, bullet, enemy) {
 
       // === Ammo rules diverge by mode ===
       if (selectedMode === 'normal') {
-        maxAmmo = 10;
         ammo = maxAmmo; // ONLY difference in Normal mode
       } else {
         ammo = wasComboZero ? maxAmmo : (ammo + 1);
