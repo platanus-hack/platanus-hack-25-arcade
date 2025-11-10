@@ -688,7 +688,7 @@ dragonGraphics.destroy();
 function update(time, delta) {
   graphics.clear();
   // Draw player trail (tiny faded circles, longer)
-  for(let i=0;i<trail.length;i++){
+  if(state==='GAME')for(let i=0;i<trail.length;i++){
     graphics.fillStyle(0xffff00,0.04+0.04*i);
     graphics.fillCircle(trail[i][0],trail[i][1],2+i*0.18);
   }
@@ -2011,7 +2011,7 @@ function openChest() {
         // Already at max HP - grant +1 maxHP!
         player.maxHp += 1;
         player.hp = player.maxHp;
-  showBigText('🍌 PLATANO DIVINO! 🍌', 400, 330, '#ffff00', 48, 2800);
+  showBigText('🍌 PLATANO DIVINO! ', 400, 330, '#ffff00', 48, 2800);
   showBigText(`¡+1 VIDA MAXIMA! [${player.maxHp} HP]`, 400, 370, '#00ff00', 38, 2500);
         play(1320, 0.5, 'sine');
         spawnParticles(600, 300, 0xffff00, 60);
@@ -2022,7 +2022,7 @@ function openChest() {
         const healAmount = Math.floor(player.maxHp * 0.5);
         const actualHeal = Math.min(healAmount, player.maxHp - player.hp);
         player.hp = Math.min(player.maxHp, player.hp + healAmount);
-  showBigText('🍌 PLATANO ENCONTRADO! 🍌', 400, 330, '#ffff00', 48, 2800);
+  showBigText('🍌 PLATANO ENCONTRADO! ', 400, 330, '#ffff00', 48, 2800);
   showBigText(`VIDA RESTAURADA +${actualHeal} HP!`, 400, 370, '#00ff00', 38, 2500);
         play(880, 0.4, 'sine');
         spawnParticles(600, 300, 0xffff00, 40);
@@ -2502,6 +2502,7 @@ function escapeToShop() {
   inputRight = false;
   lastInputTime = 0; // Reset debounce timer
   stopGameMusic(); // Stop music when going to shop
+  trail=[];
   hideGame();
   showShop();
 }
@@ -2894,6 +2895,7 @@ function showGameOver() {
   ore = null;
   chest = null;
   
+  trail=[];
   hideGame();
 // el texto es muy grande asi que hay que subirlo mas de lo que parece
   texts.title.setText('Otro Deshecho en el ABYSS').setVisible(true).setPosition(400, 70);
