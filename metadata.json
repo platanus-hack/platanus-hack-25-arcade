@@ -1,4 +1,4 @@
 {
-  "game_name": "<FILL THIS>",
-  "description": "<FILL THIS>"
+  "game_name": "Platanus Dice Retro",
+  "description": "Juego de memoria estilo Simon Says de temática Platanus. El jugador debe repetir una secuencia creciente de colores (Rojo, Verde, Azul, Amarillo, Blanco, Morado) en un tiempo límite cada vez más corto. Utiliza los botones P1L/P1R del joystick para seleccionar el color y el botón P1A para confirmar la pulsación. Dificultad incremental en velocidad y tiempo."
 }
