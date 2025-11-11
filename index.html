@@ -23,6 +23,31 @@
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
+        /* Fuente Arcade para el estilo retro */
+    @font-face {
+        font-family: 'ArcadeFont';
+        src: url('https://fonts.cdnfonts.com/s/15454/ARCADE_N.woff') format('woff');
+        font-weight: normal;
+        font-style: normal;
+    }
+
+    body {
+        margin: 0;
+        background-color: #000000;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+    /* Estilo del monitor de la consola Arcade (Bordes Amarillos) */
+    canvas {
+        border: 8px solid #ffff00; /* Borde amarillo fuerte */
+        border-radius: 4px;
+        box-shadow: 0 0 30px #ffff00, inset 0 0 10px #ffff00; /* Brillo amarillo */
+        transform: scale(0.95);
+        transition: transform 0.3s ease;
+    }
   </style>
 </head>
 <body class="bg-black text-white m-0 p-0">
