@@ -1,4 +1,5 @@
 {
-  "game_name": "<FILL THIS>",
-  "description": "<FILL THIS>"
+  "game_name": "Bubble Pop",
+  "description": "Juego estilo Puzzle Bobble. Apunta y dispara burbujas del mismo color para hacerlas explotar. Gráficos 100% generados con Phaser Graphics. ← → para apuntar, Space para disparar",
+  "cover_image": "cover.png"
 }

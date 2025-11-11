@@ -1,19 +1,93 @@
-# 🎮 Platanus Hack 25: Arcade Challenge
+# 🎮 Bubble Pop 🫧
 
-At [Platanus Hack 25](https://hack.platan.us) we will have an arcade machine. While we could put some cool retro games on it, it is way better if it can be turned into a challenge.
+Un juego arcade para Platanus Hack 25 donde los jugadores disparan burbujas para conectar 3+ del mismo color y hacerlas explotar. ¡Elimina todas las burbujas para ganar!
 
-**Your mission:** Build the best arcade game using Phaser 3 (JS Game Lib) that will run on our physical arcade machine!
+![Bubble Pop](cover.png)
+
+🎯 Descripción
+Modo de 1 o 2 jugadores simultáneos
+Sistema de capas que caen cada 60 segundos
+Gravedad automática después de 1 minuto
+Sistema de ranking con Top 10 (almacenado en localStorage)
+Música y sonidos generados con Web Audio API
+Sprites procedurales dibujados en runtime (sin imágenes externas)
+
+🎯 Controles
+Jugador 1: A|D (mover cañón) • Q|W|E|S (apuntar) • ESPACIO (disparar)
+Jugador 2: J|L (mover cañón) • U|I|O|K (apuntar) • ENTER (disparar)
+📁 Estructura del Proyecto
+platanus-hack-25-arcade/
+├── game.js          # ✅ Código principal del juego (sin imports)
+├── metadata.json    # ✅ Nombre y descripción del juego
+├── index.html       # HTML con Phaser desde CDN
+├── README.md        # Este archivo
+└── bublepop.png     # Imagen de portada 800x600px
+⚙️ Características Técnicas
+Cumple con restricciones:
+✅ Sin imports: JavaScript vanilla puro
+✅ Sin URLs externas en game.js (Phaser desde CDN no cuenta)
+✅ Sin fetch/XMLHttpRequest
+✅ Sprites procedurales: Dibujados con Canvas API
+✅ Audio generado: Usando Web Audio API de Phaser
+✅ Tamaño optimizado: Código minificable
+Phaser 3 Features utilizados:
+Phaser.Game y configuración
+Physics (Arcade)
+Sprites y texturas procedurales
+Tweens para animaciones
+Keyboard input
+Groups y colisiones
+LocalStorage para persistencia
+🚀 Desarrollo
+Instalar dependencias:
+pnpm install
+Ejecutar en desarrollo:
+pnpm dev
+Verificar restricciones:
+pnpm check-restrictions
+🎨 Sprites
+Todos los sprites son generados proceduralmente en el código:
+
+Burbujas: 12 colores con gradientes y brillos
+Cañones: Triángulos con efectos de glow
+Indicadores: Trayectorias punteadas con animaciones
+🎵 Audio
+Sonidos generados con osciladores:
+Disparo: Tono ascendente (800Hz → 400Hz)
+Explosión: Tono descendente (600Hz → 200Hz)
+Alerta: Sirena alternante (800Hz ↔ 600Hz)
+
+🏆 Sistema de Ranking
+Top 10 mejores puntuaciones
+Guardado en localStorage
+📊 Mecánicas de Juego
+Capas que caen: Cada 60 segundos se agrega una nueva capa
+Gravedad automática: Después de 1 minuto las burbujas caen gradualmente
+Modo simultáneo: Ambos jugadores juegan al mismo tiempo
+🎯 Objetivo del Juego
+Conecta 3 o más burbujas del mismo color disparando burbujas. Las burbujas flotantes también caen. ¡Elimina todas las burbujas para ganar!
+
+📝 Puntuación
+10 puntos por grupo de burbujas explotadas
+5 puntos por burbujas flotantes eliminadas
+1 punto por segundo sobrevivido
+🔧 Próximos Pasos
+ Ejecutar pnpm check-restrictions para verificar tamaño
+ Optimizar código si excede 50KB
+👥 Créditos
+Juego creado para Platanus Hack 25: Arcade Challenge
+Creado por: Exequiel Alvarado
 
 ---
 
 ## 🏆 Prizes
 
-**🥇 First Place:**
+### 🥇 First Place:
 - 💵 **$250 USD in cash**
 - 🎟️ **A slot to participate in Platanus Hack**
 - 🎮 **Your game featured on the arcade machine**
 
-**🥈 Second Place:**
+### 🥈 Second Place:
 - 💵 **$100 USD in cash**
 - 🎮 **Your game featured on the arcade machine**
 
@@ -40,50 +114,46 @@ Your game must comply with these technical restrictions:
 - ✅ **Generated audio tones** - Using Phaser's Web Audio API
 - ✅ **Canvas-based rendering and effects**
 
-# 🕹️ Controls
-
+🕹️ Controls
 Your game will run on a real arcade cabinet with physical joysticks and buttons!
 
-![Arcade Button Layout](https://hack.platan.us/assets/images/arcade/button-layout.webp)
+**Arcade Button Layout**
 
-## Arcade Button Mapping
-
+**Arcade Button Mapping**
 The arcade cabinet sends specific key codes when buttons are pressed:
 
 **Player 1:**
-- **Joystick**: `P1U`, `P1D`, `P1L`, `P1R` (Up, Down, Left, Right)
-- **Joystick Diagonals**: `P1DL`, `P1DR` (Down-Left, Down-Right)
-- **Action Buttons**: `P1A`, `P1B`, `P1C` (top row) / `P1X`, `P1Y`, `P1Z` (bottom row)
-- **Start**: `START1`
+- Joystick: P1U, P1D, P1L, P1R (Up, Down, Left, Right)
+- Joystick Diagonals: P1DL, P1DR (Down-Left, Down-Right)
+- Action Buttons: P1A, P1B, P1C (top row) / P1X, P1Y, P1Z (bottom row)
+- Start: START1
 
 **Player 2:**
-- **Joystick**: `P2U`, `P2D`, `P2L`, `P2R`
-- **Joystick Diagonals**: `P2DL`, `P2DR`
-- **Action Buttons**: `P2A`, `P2B`, `P2C` / `P2X`, `P2Y`, `P2Z`
-- **Start**: `START2`
+- Joystick: P2U, P2D, P2L, P2R
+- Joystick Diagonals: P2DL, P2DR
+- Action Buttons: P2A, P2B, P2C / P2X, P2Y, P2Z
+- Start: START2
 
-## Testing Locally
-
-For local testing, you can map these arcade buttons to keyboard keys. The mapping supports **multiple keyboard keys per arcade button** (useful for alternatives like WASD + Arrow Keys). See `game.js` for the complete `ARCADE_CONTROLS` mapping template.
+**Testing Locally**
+For local testing, you can map these arcade buttons to keyboard keys. The mapping supports multiple keyboard keys per arcade button (useful for alternatives like WASD + Arrow Keys). See game.js for the complete ARCADE_CONTROLS mapping template.
 
 By default:
-- Player 1 uses **WASD** (joystick) and **U/I/O/J/K/L** (action buttons)
-- Player 2 uses **Arrow Keys** (joystick) and **R/T/Y/F/G/H** (action buttons)
+- Player 1 uses WASD (joystick) and U/I/O/J/K/L (action buttons)
+- Player 2 uses Arrow Keys (joystick) and R/T/Y/F/G/H (action buttons)
 
-💡 **Tip**: Keep controls simple - design for joystick + 1-2 action buttons for the best arcade experience!
+💡 **Tip:** Keep controls simple - design for joystick + 1-2 action buttons for the best arcade experience!
 
 ---
 
 ## ⏰ Deadline & Submission
 
-**Deadline:** Sunday, November 10, 2025 at 23:59 (Santiago time)
+**Deadline:** Friday, November 14, 2025 at 23:59 (Santiago time)
 
 ### How to Submit
 
 Submitting your project is easy:
 
-1. **Save your changes** - Make sure `game.js`, `metadata.json`, and `cover.png` are ready
-   - **Important:** Your game must include a custom `cover.png` file (800x600 pixels) showcasing your game
+1. **Save your changes** - Make sure `game.js` and `metadata.json` are ready
 2. **Git push** - Push your code to your repository:
    ```bash
    git add .
@@ -112,7 +182,6 @@ This starts a server at `http://localhost:3000` with live restriction checking.
 ### 3. Build Your Game
 - **Edit `game.js`** - Write your arcade game code
 - **Update `metadata.json`** - Set your game name and description
-- **Create `cover.png`** - Design an 800x600 pixel cover image for your game
 - **Watch the dev server** - It shows live updates on file size and restrictions
 
 ---

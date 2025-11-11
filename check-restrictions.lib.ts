@@ -105,7 +105,9 @@ export async function checkRestrictions(gameJsPath: string = './game.js'): Promi
       compress: true,
       mangle: true
     });
-    
+
+    console.log(gameCode);
+
     minifiedCode = minifyResult.code || '';
     minifiedSize = Buffer.byteLength(minifiedCode, 'utf-8');
     const sizeKB = minifiedSize / 1024;
