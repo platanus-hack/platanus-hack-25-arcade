@@ -49,6 +49,13 @@ let gameOverIndex = 0;
 let gameOverItems = [];
 let gameOverBorders = [];
 
+// Leaderboard state
+let nameEntry = ['A', 'A', 'A', 'A'];
+let nameEntryIndex = 0;
+let nameEntryActive = false;
+let leaderboardData = [];
+let nameEntryElements = [];
+
 // Failsafe global state (hold P1A+P1B for N ms)
 let fsPrimaryDown = false;
 let fsSecondaryDown = false;
@@ -116,8 +123,9 @@ function menuCreate() {
     return t;
   };
   s.btnStart = mkBtn(260, 'Start Game', () => showModeSelect(s));
-  s.btnInstr = mkBtn(330, 'Instructions', () => showInstructions(s));
-  s.btnExit  = mkBtn(400, 'Controls', () => showControls(s));
+  s.btnInstr = mkBtn(320, 'Instructions', () => showInstructions(s));
+  s.btnLeaderboard = mkBtn(380, 'Leaderboard', () => showLeaderboard(s));
+  s.btnExit  = mkBtn(440, 'Controls', () => showControls(s));
   s.menuIndex = 0; updateMenuVisuals(s);
 
   // ===== Instructions overlay (hidden by default) =====
@@ -300,6 +308,91 @@ function menuCreate() {
   s.controlsBorders = [cShootBorder, cRayBorder, cBackBorder];
   s.controlsIndex = 0; updateControlsVisuals(s); hideControls(s);
 
+  // ===== Leaderboard overlay (hidden by default) =====
+  s.leaderboardGroup = s.add.group();
+  s.leaderboardVisible = false;
+  const lOv = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.90);
+  const lT = s.add.text(400, 60, 'LEADERBOARD', { fontSize: '48px', fontFamily: 'Arial', color: '#ffff00', stroke: '#000', strokeThickness: 4 }).setOrigin(0.5);
+  // Category selector (Normal / Challenger)
+  s.lbCategory = 0;
+  s.lbCatItems = [];
+  s.lbCatBorders = [];
+  const mkLbCat = (x, label, idx) => {
+    const b = s.add.rectangle(x, 110, 180, 44, 0x001a1a, 0.5);
+    b.setStrokeStyle(2, 0x00ffff, 0.8);
+    const t = s.add.text(x, 110, label, { fontSize: '24px', fontFamily: 'Arial', color: '#00ffff', stroke: '#000', strokeThickness: 3 }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    t.on('pointerover', () => { s.lbCategory = idx; updateLeaderboardCategoryVisuals(s); });
+    t.on('pointerdown', () => { s.lbCategory = idx; updateLeaderboardCategoryVisuals(s); });
+    s.leaderboardGroup.add(b); s.leaderboardGroup.add(t);
+    s.lbCatBorders.push(b); s.lbCatItems.push(t);
+  };
+  mkLbCat(260, 'NORMAL', 0);
+  mkLbCat(540, 'CHALLENGER', 1);
+  
+  s.leaderboardTexts = [];
+  for (let i = 0; i < 10; i++) {
+    const y = 140 + i * 38;
+    const rankText = s.add.text(180, y, (i + 1) + '.', {
+      fontSize: '24px', fontFamily: 'Arial', color: '#00ffff',
+      stroke: '#000', strokeThickness: 2
+    }).setOrigin(1, 0.5);
+    
+    const nameText = s.add.text(200, y, '----', {
+      fontSize: '24px', fontFamily: 'Arial', color: '#ffffff',
+      stroke: '#000', strokeThickness: 2
+    }).setOrigin(0, 0.5);
+    
+    const scoreText = s.add.text(620, y, '0', {
+      fontSize: '24px', fontFamily: 'Arial', color: '#00ff00',
+      stroke: '#000', strokeThickness: 2
+    }).setOrigin(1, 0.5);
+    
+    s.leaderboardTexts.push({ rank: rankText, name: nameText, score: scoreText });
+    s.leaderboardGroup.add(rankText);
+    s.leaderboardGroup.add(nameText);
+    s.leaderboardGroup.add(scoreText);
+  }
+  
+  const lBackBorder = s.add.rectangle(400, 540, 180, 50, 0x003300, 0.6);
+  lBackBorder.setStrokeStyle(2, 0x00ff00, 0.8);
+  const lBack = s.add.text(400, 540, 'Back', {
+    fontSize: '28px', fontFamily: 'Arial', color: '#0f0',
+    stroke: '#000', strokeThickness: 3
+  }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+  lBack.on('pointerover', () => { s.leaderboardIndex = 0; updateLeaderboardVisuals(s); });
+  lBack.on('pointerdown', () => hideLeaderboard(s));
+  
+  s.leaderboardGroup.addMultiple([lOv, lT, lBackBorder, lBack]);
+  s.leaderboardItems = [lBack];
+  s.leaderboardBorders = [lBackBorder];
+  hideLeaderboard(s);
+  
+  s.input.keyboard.on('keydown', (ev) => {
+    if (!s.leaderboardVisible) return;
+    if (s.leaderboardJustOpened) return;
+    const k = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
+    if (k === 'P1L') { s.lbCategory = (s.lbCategory + 1) % 2; updateLeaderboardCategoryVisuals(s); playTone(s, 440, 0.05); ev.stopPropagation?.(); return; }
+    if (k === 'P1R') { s.lbCategory = (s.lbCategory + 1) % 2; updateLeaderboardCategoryVisuals(s); playTone(s, 440, 0.05); ev.stopPropagation?.(); return; }
+    if (k === 'P1U' || k === 'P1D') {
+      // Only one item for now, still play feedback and refresh visuals
+      updateLeaderboardVisuals(s);
+      playTone(s, 440, 0.05);
+      ev.stopPropagation?.();
+      return;
+    }
+    if (ev.key === 'Escape' || k === 'P1B') { hideLeaderboard(s); ev.stopPropagation?.(); return; }
+    // P1A handled on keyup to avoid keyboard repeat issues
+  });
+  s.input.keyboard.on('keyup', (ev) => {
+    if (!s.leaderboardVisible) return;
+    if (s.leaderboardJustOpened) return;
+    const k = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
+    if (ev.key === 'Escape' || k === 'P1B' || k === 'P1A') {
+      hideLeaderboard(s);
+      ev.stopPropagation?.();
+    }
+  });
+
   // Panel key handling: Controls (navigation, back and rebinding)
   s.input.keyboard.on('keydown', (ev) => {
     if (!s.controlsVisible) return;
@@ -338,24 +431,24 @@ function menuCreate() {
   // Menu navigation keys (disabled when overlays are open)
   s.input.keyboard.on('keydown', (ev) => {
     const key = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
-    if (s.instructionsVisible || s.controlsVisible || s.modeVisible) return;
+    if (s.instructionsVisible || s.controlsVisible || s.modeVisible || s.leaderboardVisible) return;
     if (key === 'P1U') { s.menuIndex = (s.menuIndex + s.menuItems.length - 1) % s.menuItems.length; updateMenuVisuals(s); }
     else if (key === 'P1D') { s.menuIndex = (s.menuIndex + 1) % s.menuItems.length; updateMenuVisuals(s); }
     else if (key === 'P1A') {
-      const actions = [() => showModeSelect(s), () => showInstructions(s), () => showControls(s)];
+      const actions = [() => showModeSelect(s), () => showInstructions(s), () => showLeaderboard(s), () => showControls(s)];
       actions[s.menuIndex]();
     }
   });
   // Failsafe key tracking (menu scene)
   s.input.keyboard.on('keydown', (ev) => {
-    if (s.instructionsVisible || s.controlsVisible || s.modeVisible) return;
+    if (s.instructionsVisible || s.controlsVisible || s.modeVisible || s.leaderboardVisible) return;
     const key = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
     if (key === 'P1A') fsPrimaryDown = true;
     if (key === 'P1B') fsSecondaryDown = true;
     if (fsPrimaryDown && fsSecondaryDown && failsafeStartTime === 0) failsafeStartTime = s.time.now;
   });
   s.input.keyboard.on('keyup', (ev) => {
-    if (s.instructionsVisible || s.controlsVisible || s.modeVisible) return;
+    if (s.instructionsVisible || s.controlsVisible || s.modeVisible || s.leaderboardVisible) return;
     const key = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
     if (key === 'P1A') fsPrimaryDown = false;
     if (key === 'P1B') fsSecondaryDown = false;
@@ -365,7 +458,7 @@ function menuCreate() {
 
 function menuUpdate() {
   // Avoid triggering failsafe while overlays are open in menu
-  if (this.instructionsVisible || this.controlsVisible || this.modeVisible) return;
+  if (this.instructionsVisible || this.controlsVisible || this.modeVisible || this.leaderboardVisible) return;
   checkFailsafe(this);
 }
 
@@ -379,7 +472,7 @@ function checkFailsafe(scene) {
       fsPrimaryDown = false;
       fsSecondaryDown = false;
       failsafeStartTime = 0;
-      if (scene.scene && scene.scene.start) scene.scene.start('menu');
+      if (scene.scene && scene.scene.start) goToMenu(scene);
     }
   } else {
     // reset timer if any of the keys is up
@@ -450,6 +543,56 @@ function updateControlsVisuals(s) {
     }
   });
 }
+function updateLeaderboardVisuals(s) {
+  if (!s.leaderboardItems) return;
+  s.leaderboardItems.forEach((t, i) => {
+    const sel = i === s.leaderboardIndex;
+    const border = s.leaderboardBorders ? s.leaderboardBorders[i] : null;
+    t.setScale(sel ? 1.25 : 1);
+    t.setColor(sel ? '#ffff00' : '#00ff00');
+    if (border) {
+      border.setScale(sel ? 1.08 : 1);
+      border.setStrokeStyle(sel ? 3 : 2, sel ? 0xffff00 : 0x00ff00, sel ? 1 : 0.8);
+      border.setFillStyle(0x003300, sel ? 0.9 : 0.6);
+    }
+  });
+}
+function refreshLeaderboardList(s) {
+  const mode = s.lbCategory === 1 ? 'challenger' : 'normal';
+  const list = leaderboardData.filter(e => e.mode === mode).sort((a,b)=>b.score-a.score).slice(0,10);
+  for (let i = 0; i < 10; i++) {
+    if (i < list.length) {
+      const entry = list[i];
+      s.leaderboardTexts[i].name.setText(entry.name);
+      s.leaderboardTexts[i].score.setText(entry.score.toString());
+      s.leaderboardTexts[i].rank.setAlpha(1);
+      s.leaderboardTexts[i].name.setAlpha(1);
+      s.leaderboardTexts[i].score.setAlpha(1);
+    } else {
+      s.leaderboardTexts[i].name.setText('----');
+      s.leaderboardTexts[i].score.setText('0');
+      s.leaderboardTexts[i].rank.setAlpha(0.3);
+      s.leaderboardTexts[i].name.setAlpha(0.3);
+      s.leaderboardTexts[i].score.setAlpha(0.3);
+    }
+  }
+}
+function updateLeaderboardCategoryVisuals(s) {
+  if (!s.lbCatItems) return;
+  s.lbCatItems.forEach((t, i) => {
+    const sel = i === s.lbCategory;
+    const b = s.lbCatBorders ? s.lbCatBorders[i] : null;
+    t.setScale(sel ? 1.15 : 1);
+    t.setColor(sel ? '#ffff00' : '#00ffff');
+    t.setStroke(sel ? '#ffffff' : '#000000', sel ? 4 : 3);
+    if (b) {
+      b.setScale(sel ? 1.08 : 1);
+      b.setStrokeStyle(sel ? 3 : 2, sel ? 0xffff00 : 0x00ffff, sel ? 1 : 0.8);
+      b.setFillStyle(0x001a1a, sel ? 0.8 : 0.5);
+    }
+  });
+  refreshLeaderboardList(s);
+}
 function showInstructions(s) {
   s.instructionsVisible = true;
   s.instructionsGroup.setVisible(true);
@@ -477,6 +620,24 @@ function hideControls(s) {
   s.controlsVisible = false;
   s.controlsGroup.setVisible(false);
   s.controlsJustOpened = false;
+}
+function showLeaderboard(s) {
+  loadLeaderboard();
+  s.leaderboardVisible = true;
+  s.leaderboardGroup.setVisible(true);
+  // init selection state
+  s.leaderboardIndex = 0;
+  updateLeaderboardVisuals(s);
+  updateLeaderboardCategoryVisuals(s);
+  s.leaderboardJustOpened = true;
+  setTimeout(() => { s.leaderboardJustOpened = false; }, 300);
+  
+  refreshLeaderboardList(s);
+}
+function hideLeaderboard(s) {
+  s.leaderboardVisible = false;
+  s.leaderboardGroup.setVisible(false);
+  s.leaderboardJustOpened = false;
 }
 
 // ===== Mode Select overlay =====
@@ -942,12 +1103,48 @@ function create(data) {
   // Input handlers (arcade mapping)
   this.input.keyboard.on('keydown', (event) => {
     const key = KEYBOARD_TO_ARCADE[event.key] || event.key;
+    if (nameEntryActive) {
+      if (key === 'P1U') {
+        const charCode = nameEntry[nameEntryIndex].charCodeAt(0);
+        nameEntry[nameEntryIndex] = String.fromCharCode(charCode === 90 ? 65 : charCode + 1);
+        updateNameEntryVisuals();
+        playTone(scene, 440, 0.05);
+        return;
+      }
+      if (key === 'P1D') {
+        const charCode = nameEntry[nameEntryIndex].charCodeAt(0);
+        nameEntry[nameEntryIndex] = String.fromCharCode(charCode === 65 ? 90 : charCode - 1);
+        updateNameEntryVisuals();
+        playTone(scene, 440, 0.05);
+        return;
+      }
+      if (key === 'P1L') {
+        nameEntryIndex = (nameEntryIndex + 3) % 4;
+        updateNameEntryVisuals();
+        playTone(scene, 440, 0.05);
+        return;
+      }
+      if (key === 'P1R') {
+        nameEntryIndex = (nameEntryIndex + 1) % 4;
+        updateNameEntryVisuals();
+        playTone(scene, 440, 0.05);
+        return;
+      }
+      if (key === 'P1A' || key === 'START1') {
+        const name = nameEntry.join('');
+        addScore(name, score, selectedMode);
+        playTone(scene, 523, 0.2);
+        cleanupNameEntry(scene);
+        showGameOverScreen(scene);
+        return;
+      }
+    }
     if (gameOver) {
       if (key === 'P1U') { gameOverIndex = (gameOverIndex + gameOverItems.length - 1) % gameOverItems.length; updateGameOverVisuals(); return; }
       if (key === 'P1D') { gameOverIndex = (gameOverIndex + 1) % gameOverItems.length; updateGameOverVisuals(); return; }
       if (key === 'P1A' || key === 'START1') {
         if (gameOverIndex === 0) { restartGame(scene); }
-        else if (gameOverIndex === 1) { scene.scene.start('menu'); }
+        else if (gameOverIndex === 1) { goToMenu(scene); }
         return;
       }
     }
@@ -1199,32 +1396,169 @@ function maybeRebaseWorld(scene) {
   if (rightHazard) { rightHazard.y -= dy; if (rightHazard.body && rightHazard.body.updateFromGameObject) rightHazard.body.updateFromGameObject(); }
 }
 
-function endGame(scene) {
-  gameOver = true;
-  playTone(scene, 220, 0.5);
-
-  // Clear charge
-  if (isCharging) stopCharging(scene, false);
-  stopChargeAudio(scene);
-
-  // Clear jetpack
-  if (jetpackActive) deactivateJetpack(scene);
-
-  // Clear invulnerability
-  isInvulnerable = false;
-  invulnerabilityEndTime = 0;
-  if (player) {
-    player.setAlpha(1);
-    player.setScale(1, 1);
+// ===== LEADERBOARD FUNCTIONS =====
+function loadLeaderboard() {
+  try {
+    const data = localStorage.getItem('chainfall_leaderboard');
+    const parsed = data ? JSON.parse(data) : [];
+    // Migration: ensure mode field exists, default to 'normal'
+    leaderboardData = Array.isArray(parsed)
+      ? parsed.map(e => ({ name: e.name, score: e.score, mode: e.mode || 'normal' }))
+      : [];
+  } catch (e) {
+    leaderboardData = [];
   }
+}
 
-  // Restore time scale
-  if (scene.physics && scene.physics.world) scene.physics.world.timeScale = 1.0;
+function saveLeaderboard() {
+  try {
+    localStorage.setItem('chainfall_leaderboard', JSON.stringify(leaderboardData));
+  } catch (e) {
+    console.error('Failed to save leaderboard');
+  }
+}
 
-  // Stop gameplay
-  if (scene.physics && scene.physics.world) scene.physics.world.pause();
-  if (scene.cameras && scene.cameras.main) scene.cameras.main.stopFollow();
+function addScore(name, score, mode) {
+  leaderboardData.push({ name, score, mode: mode || 'normal' });
+  // Do not slice globally; we limit per-mode to top 10 when displaying
+  saveLeaderboard();
+}
 
+function isHighScore(score, mode) {
+  const m = mode || 'normal';
+  const list = leaderboardData.filter(e => e.mode === m).sort((a,b)=>b.score-a.score);
+  if (list.length < 10) return true;
+  return score > list[list.length - 1].score;
+}
+
+function showNameEntry(scene) {
+  nameEntryActive = true;
+  nameEntry = ['A', 'A', 'A', 'A'];
+  nameEntryIndex = 0;
+  nameEntryElements = [];
+  
+  const cx = 400, cy = 300;
+  
+  const overlay = scene.add.graphics();
+  overlay.fillStyle(0x000000, 0.92);
+  overlay.fillRect(0, 0, 800, 600);
+  overlay.setDepth(10000);
+  overlay.setScrollFactor(0);
+  nameEntryElements.push(overlay);
+  
+  const scanLines = scene.add.graphics();
+  for (let i = 0; i < 600; i += 4) {
+    scanLines.fillStyle(0x000000, 0.15);
+    scanLines.fillRect(0, i, 800, 2);
+  }
+  scanLines.setDepth(10000).setScrollFactor(0);
+  nameEntryElements.push(scanLines);
+  
+  const nameEntryGroup = scene.add.group();
+  
+  const prompt = scene.add.text(cx, cy - 60, 'NEW HIGH SCORE!', {
+    fontSize: '32px', fontFamily: 'Arial', color: '#ffff00',
+    stroke: '#000', strokeThickness: 4
+  }).setOrigin(0.5).setDepth(10002).setScrollFactor(0);
+  nameEntryElements.push(prompt);
+  
+  const subPrompt = scene.add.text(cx, cy - 20, 'Enter your name:', {
+    fontSize: '20px', fontFamily: 'Arial', color: '#ffffff',
+    stroke: '#000', strokeThickness: 3
+  }).setOrigin(0.5).setDepth(10002).setScrollFactor(0);
+  nameEntryElements.push(subPrompt);
+  
+  const letterBoxes = [];
+  const letterTexts = [];
+  const letterHighlights = [];
+  
+  for (let i = 0; i < 4; i++) {
+    const x = cx - 90 + i * 60;
+    
+    const highlight = scene.add.rectangle(x, cy + 40, 50, 70, 0xffff00, 0.2);
+    highlight.setDepth(10001).setScrollFactor(0);
+    letterHighlights.push(highlight);
+    nameEntryElements.push(highlight);
+    
+    const box = scene.add.rectangle(x, cy + 40, 50, 70, 0x1a1a2e, 0.9);
+    box.setStrokeStyle(3, 0x00ffff, 0.8);
+    box.setDepth(10002).setScrollFactor(0);
+    letterBoxes.push(box);
+    nameEntryElements.push(box);
+    
+    const letter = scene.add.text(x, cy + 40, nameEntry[i], {
+      fontSize: '48px', fontFamily: 'Arial', color: '#ffffff',
+      stroke: '#000', strokeThickness: 4
+    }).setOrigin(0.5).setDepth(10003).setScrollFactor(0);
+    letterTexts.push(letter);
+    nameEntryElements.push(letter);
+  }
+  
+  const arrowUp = scene.add.text(cx, cy + 90, '▲ Change Letter', {
+    fontSize: '16px', fontFamily: 'Arial', color: '#aaaaaa',
+    stroke: '#000', strokeThickness: 2
+  }).setOrigin(0.5).setDepth(10002).setScrollFactor(0);
+  nameEntryElements.push(arrowUp);
+  
+  const arrowLR = scene.add.text(cx, cy + 115, '◄ ► Move', {
+    fontSize: '16px', fontFamily: 'Arial', color: '#aaaaaa',
+    stroke: '#000', strokeThickness: 2
+  }).setOrigin(0.5).setDepth(10002).setScrollFactor(0);
+  nameEntryElements.push(arrowLR);
+  
+  const confirmText = scene.add.text(cx, cy + 145, 'Press ' + currentShootKey.toUpperCase() + ' to Confirm', {
+    fontSize: '18px', fontFamily: 'Arial', color: '#00ff00',
+    stroke: '#000', strokeThickness: 3
+  }).setOrigin(0.5).setDepth(10002).setScrollFactor(0);
+  nameEntryElements.push(confirmText);
+  
+  scene.tweens.add({
+    targets: confirmText,
+    alpha: { from: 0.6, to: 1 },
+    duration: 600,
+    yoyo: true,
+    repeat: -1
+  });
+  
+  window.updateNameEntryVisuals = () => {
+    letterHighlights.forEach((h, i) => {
+      h.setVisible(i === nameEntryIndex);
+    });
+    letterBoxes.forEach((b, i) => {
+      if (i === nameEntryIndex) {
+        b.setStrokeStyle(4, 0xffff00, 1);
+        b.setScale(1.1);
+      } else {
+        b.setStrokeStyle(3, 0x00ffff, 0.8);
+        b.setScale(1);
+      }
+    });
+    letterTexts.forEach((t, i) => {
+      t.setText(nameEntry[i]);
+      t.setColor(i === nameEntryIndex ? '#ffff00' : '#ffffff');
+    });
+  };
+  
+  updateNameEntryVisuals();
+}
+
+function cleanupNameEntry(scene) {
+  nameEntryActive = false;
+  nameEntryElements.forEach(el => {
+    if (el && el.destroy) el.destroy();
+  });
+  nameEntryElements = [];
+  if (scene && scene.tweens) scene.tweens.killAll();
+}
+
+function goToMenu(scene) {
+  gameOver = false;
+  nameEntryActive = false;
+  cleanupNameEntry(scene);
+  scene.scene.start('menu');
+}
+
+function showGameOverScreen(scene) {
   // Dark overlay with radial gradient effect
   const overlay = scene.add.graphics();
   overlay.fillStyle(0x000000, 0.88);
@@ -1462,11 +1796,48 @@ function endGame(scene) {
 
   menuBtn.setInteractive({ useHandCursor: true });
   menuBtn.on('pointerover', () => { gameOverIndex = 1; updateGameOverVisuals(); });
-  menuBtn.on('pointerdown', () => { scene.scene.start('menu'); });
+  menuBtn.on('pointerdown', () => { goToMenu(scene); });
+}
+
+function endGame(scene) {
+  gameOver = true;
+  playTone(scene, 220, 0.5);
+
+  // Clear charge
+  if (isCharging) stopCharging(scene, false);
+  stopChargeAudio(scene);
+
+  // Clear jetpack
+  if (jetpackActive) deactivateJetpack(scene);
+
+  // Clear invulnerability
+  isInvulnerable = false;
+  invulnerabilityEndTime = 0;
+  if (player) {
+    player.setAlpha(1);
+    player.setScale(1, 1);
+  }
+
+  // Restore time scale
+  if (scene.physics && scene.physics.world) scene.physics.world.timeScale = 1.0;
+
+  // Stop gameplay
+  if (scene.physics && scene.physics.world) scene.physics.world.pause();
+  if (scene.cameras && scene.cameras.main) scene.cameras.main.stopFollow();
+
+  // Check if this is a high score
+  loadLeaderboard();
+  if (isHighScore(score, selectedMode)) {
+    showNameEntry(scene);
+    return;
+  }
+
+  showGameOverScreen(scene);
 }
 
 function restartGame(scene) {
   gameOver = false;
+  nameEntryActive = false;
   score = 0;
   maxDepth = 0;
   ammo = maxAmmo;
