@@ -123,88 +123,143 @@ function menuCreate() {
   // ===== Instructions overlay (hidden by default) =====
   s.instructionsGroup = s.add.group();
   const iOv = s.add.rectangle(400, 300, 800, 600, 0x000000, 0.86);
-  const iT = s.add.text(400, 140, 'Instructions', { fontSize: '40px', fontFamily: 'Arial, sans-serif', color: '#ffff00' }).setOrigin(0.5);
+  const iT = s.add.text(400, 60, 'Instructions', { fontSize: '40px', fontFamily: 'Arial, sans-serif', color: '#ffff00' }).setOrigin(0.5);
 
-  const iBackBorder = s.add.rectangle(400, 520, 180, 50, 0x003300, 0.6);
+  s.instrCategory = 0;
+  s.instrCategoryItems = [];
+  s.instrCategoryBorders = [];
+  const cX = 150, cY = 200, cS = 80;
+  const cats = ['Movement', 'Basic Shoot', 'Advanced Shoot'];
+  for (let i = 0; i < 3; i++) {
+    const b = s.add.rectangle(cX, cY + i * cS, 220, 60, 0x001a1a, 0.5);
+    b.setStrokeStyle(2, 0x00ffff, 0.8);
+    const t = s.add.text(cX, cY + i * cS, cats[i], {
+      fontSize: '22px', fontFamily: 'Arial', color: '#0ff',
+      stroke: '#000', strokeThickness: 3, align: 'center'
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    t.on('pointerover', () => { s.instrCategory = i; updateInstrCategoryVisuals(s); });
+    t.on('pointerdown', () => { s.instrCategory = i; updateInstrCategoryVisuals(s); });
+    s.instrCategoryItems.push(t);
+    s.instrCategoryBorders.push(b);
+  }
+
+  const iBackBorder = s.add.rectangle(150, 520, 180, 50, 0x003300, 0.6);
   iBackBorder.setStrokeStyle(2, 0x00ff00, 0.8);
-  const iBack = s.add.text(400, 520, 'Back', {
-    fontSize: '28px',
-    fontFamily: 'Arial, sans-serif',
-    color: '#00ff00',
-    stroke: '#000000',
-    strokeThickness: 3
+  const iBack = s.add.text(150, 520, 'Back', {
+    fontSize: '28px', fontFamily: 'Arial', color: '#0f0',
+    stroke: '#000', strokeThickness: 3
   }).setOrigin(0.5).setInteractive({ useHandCursor: true });
   iBack.on('pointerdown', () => hideInstructions(s));
 
-  const g = s.add.graphics();
-  g.lineStyle(2, 0x00ffff, 1);
+  s.movementGroup = [];
+  const mx=500,my=300;
+  const gm=s.add.graphics();
+  gm.fillStyle(0x00ffff,1);
+  gm.fillTriangle(mx-90,my+40,mx-80,my+32,mx-80,my+48);
+  gm.fillTriangle(mx+90,my+40,mx+80,my+32,mx+80,my+48);
+  gm.fillTriangle(mx,my-40,mx-8,my-30,mx+8,my-30);
+  s.movementGroup.push(
+    s.add.text(mx,180,'MOVE / JUMP',{fontSize:'24px',fontFamily:'Arial',color:'#fff'}).setOrigin(0.5),
+    s.add.rectangle(mx-60,my+40,40,40,0x111111),s.add.rectangle(mx+60,my+40,40,40,0x111111),s.add.rectangle(mx,my-10,40,40,0x111111),
+    s.add.text(mx-60,my+40,'A',{fontSize:'24px',fontFamily:'Arial',color:'#0ff'}).setOrigin(0.5),
+    s.add.text(mx+60,my+40,'D',{fontSize:'24px',fontFamily:'Arial',color:'#0ff'}).setOrigin(0.5),
+    s.add.text(mx,my-10,'W',{fontSize:'24px',fontFamily:'Arial',color:'#0ff'}).setOrigin(0.5),
+    s.add.text(mx,380,'A/D: Move • W: Jump',{fontSize:'18px',fontFamily:'Arial',color:'#ddd'}).setOrigin(0.5),
+    gm
+  );
 
-  const moveTitle = s.add.text(140, 200, 'MOVE / JUMP', { fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#ffffff' }).setOrigin(0.5);
-  const keyA = s.add.rectangle(110, 240, 34, 34, 0x111111);
-  const keyD = s.add.rectangle(170, 240, 34, 34, 0x111111);
-  const keyW = s.add.rectangle(140, 190, 34, 34, 0x111111);
-  const txtA = s.add.text(110, 240, 'A', { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#00ffff' }).setOrigin(0.5);
-  const txtD = s.add.text(170, 240, 'D', { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#00ffff' }).setOrigin(0.5);
-  const txtW = s.add.text(140, 190, 'W', { fontSize: '20px', fontFamily: 'Arial, sans-serif', color: '#00ffff' }).setOrigin(0.5);
-  g.fillStyle(0x00ffff, 1);
-  g.fillTriangle(90, 240, 100, 232, 100, 248);
-  g.fillTriangle(190, 240, 180, 232, 180, 248);
-  g.fillTriangle(140, 170, 132, 180, 148, 180);
+  s.basicShootingGroup = [];
+  const ey=310,sx=400,cx=600;
+  const pr=s.add.rectangle(sx,ey-100,18,24,0xffffff);pr.setStrokeStyle(2,0x00ffff,0.6);
+  const cp=s.add.rectangle(cx,ey-100,18,24,0xffffff);cp.setStrokeStyle(2,0x00ffff,0.6);
+  const gb=s.add.graphics();
+  gb.fillStyle(0xff4444,1);gb.fillTriangle(sx,ey+38,sx-8,ey+26,sx+8,ey+26);
+  gb.fillStyle(0x00ffff,1);gb.fillTriangle(cx,ey+38,cx-8,ey+26,cx+8,ey+26);
+  s.basicShootingGroup.push(
+    s.add.text(sx,160,'SHOOT',{fontSize:'22px',fontFamily:'Arial',color:'#ff0'}).setOrigin(0.5),
+    s.add.rectangle(sx,ey+14,160,12,0x00aaff),pr,
+    s.add.rectangle(sx,ey-34,6,14,0xff4444),s.add.rectangle(sx,ey-60,6,14,0xff4444),
+    s.add.rectangle(sx,ey,30,16,0xff2222),
+    s.add.text(sx,ey+60,'Press '+currentShootKey.toUpperCase()+' in air',{fontSize:'16px',fontFamily:'Arial',color:'#ddd'}).setOrigin(0.5),
+    s.add.text(sx,ey+82,'Land: reload',{fontSize:'16px',fontFamily:'Arial',color:'#aaa'}).setOrigin(0.5),
+    s.add.text(cx,160,'COMBO',{fontSize:'22px',fontFamily:'Arial',color:'#ff0'}).setOrigin(0.5),
+    s.add.rectangle(cx,ey+14,160,12,0x00aaff),cp,
+    s.add.rectangle(cx,ey-34,6,14,0x00ffff),s.add.rectangle(cx,ey-60,6,14,0x00ffff),
+    s.add.rectangle(cx,ey,30,16,0xff2222),
+    s.add.text(cx,ey+60,'Air kills: combo+',{fontSize:'16px',fontFamily:'Arial',color:'#ddd'}).setOrigin(0.5),
+    s.add.text(cx,ey+82,'Gain blue ammo',{fontSize:'16px',fontFamily:'Arial',color:'#aaa'}).setOrigin(0.5),
+    gb
+  );
 
-  const enemyYValue = 346;
+  s.advancedShootingGroup = [];
+  const ay=280,chx=400,rx=600;
+  const chp=s.add.rectangle(chx,ay-66,18,24,0xffffff);chp.setStrokeStyle(2,0xEEF527,1.5);
+  const rp=s.add.rectangle(rx,ay-100,18,24,0xffffff);rp.setStrokeStyle(2,0x00ffff,0.6);
+  const se=s.add.rectangle(rx,ay,30,16,0xff2222);se.setStrokeStyle(3,0x00ffff,0.8);
+  const ga=s.add.graphics();
+  ga.fillStyle(0xEEF527,0.3);
+  for(let i=0;i<3;i++){ga.fillCircle(chx,ay-66,20+i*8);}
+  ga.fillStyle(0xEEF527,1);ga.fillRect(chx-1,ay-86,2,40);
+  ga.lineStyle(3,0xEEF527,1);ga.strokeLineShape(new Phaser.Geom.Line(rx,ay-76,rx,ay-14));
+  s.advancedShootingGroup.push(
+    s.add.text(chx,160,'CHARGE',{fontSize:'22px',fontFamily:'Arial',color:'#ff0'}).setOrigin(0.5),
+    s.add.rectangle(chx,ay+14,160,12,0x00aaff),chp,
+    s.add.text(chx,ay+50,'Hold '+currentRayKey.toUpperCase()+': charge',{fontSize:'16px',fontFamily:'Arial',color:'#ddd'}).setOrigin(0.5),
+    s.add.text(chx,ay+72,'Slow-mo + power',{fontSize:'16px',fontFamily:'Arial',color:'#aaa'}).setOrigin(0.5),
+    s.add.text(rx,160,'RAY GUN',{fontSize:'22px',fontFamily:'Arial',color:'#ff0'}).setOrigin(0.5),
+    s.add.rectangle(rx,ay+16,160,12,0x00aaff),rp,se,
+    s.add.text(rx,ay+50,'Release '+currentRayKey.toUpperCase()+': vertical ray',{fontSize:'16px',fontFamily:'Arial',color:'#ddd'}).setOrigin(0.5),
+    s.add.text(rx,ay+72,'Breaks shields',{fontSize:'16px',fontFamily:'Arial',color:'#aaa'}).setOrigin(0.5),
+    s.add.text(rx,ay+94,'Can kill multiple enemies',{fontSize:'16px',fontFamily:'Arial',color:'#aaa'}).setOrigin(0.5),
+    ga
+  );
 
-  const centerTitle = s.add.text(400, 200, 'SHOOT DOWN', { fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#ffffff' }).setOrigin(0.5);
-  const plat = s.add.rectangle(400, 360, 160, 12, 0x00aaff);
-  const pRect = s.add.rectangle(400, enemyYValue - 12 - 22 - 66, 18, 24, 0xffffff);
-  const bullet = s.add.rectangle(400, enemyYValue - 12 - 22, 6, 14, 0xff4444);
-  const bullet2 = s.add.rectangle(400, enemyYValue - 12 - 22 - 26, 6, 14, 0xff4444);
-  const enemy1 = s.add.rectangle(400, enemyYValue, 30, 16, 0xff2222);
-  g.fillStyle(0xff4444, 1);
-  g.fillTriangle(400, 390, 392, 378, 408, 378);
-  const shootTxt = s.add.text(400, 420, 'Press ' + currentShootKey.toUpperCase() + ' to shoot down (in air)', { fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#dddddd' }).setOrigin(0.5);
-  const landTxt = s.add.text(400, 444, 'Landing reloads to max ammo', { fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#aaaaaa' }).setOrigin(0.5);
-
-  const comboTitle = s.add.text(660, 200, 'COMBO', { fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#ffffff' }).setOrigin(0.5);
-  const comboPlat = s.add.rectangle(660, 360, 160, 12, 0x00aaff);
-  const comboPlayer = s.add.rectangle(660, enemyYValue - 12 - 22 - 66, 18, 24, 0xffffff);
-  const bb1 = s.add.rectangle(660, enemyYValue - 12 - 22, 6, 14, 0x00ffff);
-  const bb2 = s.add.rectangle(660, enemyYValue - 12 - 22 - 26, 6, 14, 0x00ffff);
-  g.fillStyle(0x00ffff, 1);
-  g.fillTriangle(660, 390, 652, 378, 668, 378);
-  const enemy2 = s.add.rectangle(660, enemyYValue, 30, 16, 0xff2222);
-  const comboInfo1 = s.add.text(660, 420, 'Air kills build combo', { fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#dddddd' }).setOrigin(0.5);
-  const comboInfo2 = s.add.text(660, 444, 'Gain blue bullets; landing resets extras', { fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#aaaaaa' }).setOrigin(0.5);
-
-  s.instructionsGroup.addMultiple([
-    iOv, iT, iBackBorder, iBack,
-    moveTitle, keyA, keyD, keyW, txtA, txtD, txtW,
-    centerTitle, plat, pRect, bullet, bullet2, enemy1, shootTxt, landTxt,
-    comboTitle, comboPlat, comboPlayer, bb1, bb2, enemy2, comboInfo1, comboInfo2,
-    g
-  ]);
+  // Add all to main group and set initial visibility
+  s.instructionsGroup.addMultiple([iOv, iT, iBackBorder, iBack]);
+  s.instrCategoryItems.forEach(item => s.instructionsGroup.add(item));
+  s.instrCategoryBorders.forEach(border => s.instructionsGroup.add(border));
+  s.movementGroup.forEach(item => s.instructionsGroup.add(item));
+  s.basicShootingGroup.forEach(item => s.instructionsGroup.add(item));
+  s.advancedShootingGroup.forEach(item => s.instructionsGroup.add(item));
+  
   s.instrItems = [iBack];
   s.instrBorders = [iBackBorder];
-  s.instrIndex = 0; updateInstrVisuals(s); hideInstructions(s);
+  s.instrIndex = 0; 
+  updateInstrCategoryVisuals(s);
+  hideInstructions(s);
 
-  // Panel key handling: Instructions
   s.input.keyboard.on('keydown', (ev) => {
-    if (!s.instructionsVisible) return;
-    if (s.instructionsJustOpened) return;
-    const raw = ev.key;
-    const key = KEYBOARD_TO_ARCADE[raw] || raw;
-    if (raw === 'Escape' || key === 'P1B') { hideInstructions(s); if (ev.stopPropagation) ev.stopPropagation(); return; }
-    if (key === 'P1U' || key === 'P1D' || key === 'P1L' || key === 'P1R') { s.instrIndex = 0; updateInstrVisuals(s); if (ev.stopPropagation) ev.stopPropagation(); return; }
-    // P1A close moved to keyup only to avoid keyboard repeat issues
-    if (ev.stopPropagation) ev.stopPropagation();
+    if (!s.instructionsVisible || s.instructionsJustOpened) return;
+    const k = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
+    if (ev.key === 'Escape' || k === 'P1B') { hideInstructions(s); ev.stopPropagation?.(); return; }
+    if (k === 'P1U') { 
+      s.instrIndex = (s.instrIndex + 3) % 4;
+      if (s.instrIndex === 3) s.instrCategory = -1;
+      else s.instrCategory = s.instrIndex;
+      updateInstrVisuals(s);
+      updateInstrCategoryVisuals(s); 
+      playTone(s, 440, 0.05);
+      ev.stopPropagation?.(); 
+      return; 
+    }
+    if (k === 'P1D') { 
+      s.instrIndex = (s.instrIndex + 1) % 4;
+      if (s.instrIndex === 3) s.instrCategory = -1;
+      else s.instrCategory = s.instrIndex;
+      updateInstrVisuals(s);
+      updateInstrCategoryVisuals(s); 
+      playTone(s, 440, 0.05);
+      ev.stopPropagation?.(); 
+      return; 
+    }
+    ev.stopPropagation?.();
   });
   s.input.keyboard.on('keyup', (ev) => {
-    if (!s.instructionsVisible) return;
-    if (s.instructionsJustOpened) return;
-    const raw = ev.key;
-    const key = KEYBOARD_TO_ARCADE[raw] || raw;
-    if (raw === 'Escape' || key === 'P1B' || key === 'P1A') {
+    if (!s.instructionsVisible || s.instructionsJustOpened) return;
+    const k = KEYBOARD_TO_ARCADE[ev.key] || ev.key;
+    if ((ev.key === 'Escape' || k === 'P1B') || (k === 'P1A' && s.instrIndex === 3)) {
       hideInstructions(s);
-      if (ev.stopPropagation) ev.stopPropagation();
+      ev.stopPropagation?.();
     }
   });
 
@@ -349,18 +404,36 @@ function updateMenuVisuals(s) {
 // ===== Instructions / Controls visuals =====
 function updateInstrVisuals(s) {
   if (!s.instrItems) return;
-  s.instrItems.forEach((t, i) => {
-    const sel = i === s.instrIndex;
-    const border = s.instrBorders ? s.instrBorders[i] : null;
-    t.setScale(sel ? 1.25 : 1);
-    t.setColor(sel ? '#ffff00' : '#00ff00');
-    t.setStroke(sel ? '#ffffff' : '#000000', sel ? 4 : 3);
-    if (border) {
-      border.setScale(sel ? 1.12 : 1);
-      border.setStrokeStyle(sel ? 3 : 2, sel ? 0xffff00 : 0x00ff00, sel ? 1 : 0.8);
-      border.setFillStyle(0x003300, sel ? 0.9 : 0.6);
+  const sel = s.instrIndex === 3;
+  const t = s.instrItems[0];
+  const border = s.instrBorders ? s.instrBorders[0] : null;
+  t.setScale(sel ? 1.25 : 1);
+  t.setColor(sel ? '#ffff00' : '#00ff00');
+  t.setStroke(sel ? '#ffffff' : '#000000', sel ? 4 : 3);
+  if (border) {
+    border.setScale(sel ? 1.12 : 1);
+    border.setStrokeStyle(sel ? 3 : 2, sel ? 0xffff00 : 0x00ff00, sel ? 1 : 0.8);
+    border.setFillStyle(0x003300, sel ? 0.9 : 0.6);
+  }
+}
+function updateInstrCategoryVisuals(s) {
+  if (!s.instrCategoryItems) return;
+  s.instrCategoryItems.forEach((t, i) => {
+    const sel = i === s.instrCategory;
+    const b = s.instrCategoryBorders ? s.instrCategoryBorders[i] : null;
+    t.setScale(sel ? 1.15 : 1);
+    t.setColor(sel ? '#ff0' : '#0ff');
+    t.setStroke(sel ? '#fff' : '#000', sel ? 4 : 3);
+    if (b) {
+      b.setScale(sel ? 1.08 : 1);
+      b.setStrokeStyle(sel ? 3 : 2, sel ? 0xffff00 : 0x00ffff, sel ? 1 : 0.8);
+      b.setFillStyle(0x001a1a, sel ? 0.8 : 0.5);
     }
   });
+  const showContent = s.instrCategory >= 0;
+  if (s.movementGroup) s.movementGroup.forEach(item => item.setVisible(showContent && s.instrCategory === 0));
+  if (s.basicShootingGroup) s.basicShootingGroup.forEach(item => item.setVisible(showContent && s.instrCategory === 1));
+  if (s.advancedShootingGroup) s.advancedShootingGroup.forEach(item => item.setVisible(showContent && s.instrCategory === 2));
 }
 function updateControlsVisuals(s) {
   if (!s.controlsItems) return;
@@ -381,7 +454,9 @@ function showInstructions(s) {
   s.instructionsVisible = true;
   s.instructionsGroup.setVisible(true);
   s.instrIndex = 0;
+  s.instrCategory = 0;
   updateInstrVisuals(s);
+  updateInstrCategoryVisuals(s);
   s.instructionsJustOpened = true;
   setTimeout(() => { s.instructionsJustOpened = false; }, 300);
 }
