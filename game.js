@@ -330,8 +330,8 @@ function menuCreate() {
   mkLbCat(540, 'CHALLENGER', 1);
   
   s.leaderboardTexts = [];
-  for (let i = 0; i < 10; i++) {
-    const y = 140 + i * 38;
+  for (let i = 0; i < 5; i++) {
+    const y = 170 + i * 40;
     const rankText = s.add.text(180, y, (i + 1) + '.', {
       fontSize: '24px', fontFamily: 'Arial', color: '#00ffff',
       stroke: '#000', strokeThickness: 2
@@ -559,8 +559,8 @@ function updateLeaderboardVisuals(s) {
 }
 function refreshLeaderboardList(s) {
   const mode = s.lbCategory === 1 ? 'challenger' : 'normal';
-  const list = leaderboardData.filter(e => e.mode === mode).sort((a,b)=>b.score-a.score).slice(0,10);
-  for (let i = 0; i < 10; i++) {
+  const list = leaderboardData.filter(e => e.mode === mode).sort((a,b)=>b.score-a.score).slice(0,5);
+  for (let i = 0; i < 5; i++) {
     if (i < list.length) {
       const entry = list[i];
       s.leaderboardTexts[i].name.setText(entry.name);
